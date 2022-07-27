@@ -21,7 +21,7 @@ Plugin 'VundleVim/Vundle.vim'
 
 Plugin 'ctrlpvim/ctrlp.vim'
 let g:ctrlp_working_path_mode = 'ra'
-let g:ctrlp_custom_ignore = '\v[\/](build|docs|api-doc|target|.*-env)$'
+let g:ctrlp_custom_ignore = '\v[\/](build|docs|api-doc|target|__pycache__|.*-env)$'
 
 Plugin 'scrooloose/nerdcommenter'
 
@@ -62,7 +62,8 @@ let g:cpp_no_function_highlight = 1
 if 'gcca' != s:configName
   Plugin 'ycm-core/YouCompleteMe'
   let g:ycm_global_ycm_extra_conf = '~/.vim/bundle/YouCompleteMe/third_party/ycmd/.ycm_extra_conf.py'
-  let g:ycm_server_python_interpreter = '/usr/bin/python3'
+  let g:ycm_server_python_interpreter = '/.gcca/q/snk809-env/bin/python'
+  "'/usr/bin/python3'
   let g:ycm_min_num_of_chars_for_completion = 3
   let g:ycm_max_num_candidates = 5
   let g:ycm_auto_trigger = 0
@@ -102,7 +103,7 @@ au BufNewFile,BufRead *.cuh vnoremap <buffer><Leader>cf :ClangFormat<CR>
 
 "Plugin 'airblade/vim-gitgutter'
 
-Plugin 'whatyouhide/vim-lengthmatters'
+"Plugin 'whatyouhide/vim-lengthmatters'
 
 Plugin 'dag/vim-fish'
 
@@ -134,7 +135,7 @@ set number
 set wildignorecase
 set ignorecase
 set smartcase
-"set hlsearch
+set hlsearch
 set incsearch
 
 set magic
@@ -158,14 +159,14 @@ syntax enable
 set t_Co=256
 let base16colorspace=256
 set background=dark
-colorscheme base16-monokai
+colorscheme base16-grayscale-dark "base16-monokai
 
 if !has("gui_running")
 	set termguicolors
   hi Normal guibg=NONE ctermbg=NONE
 else
 	set guioptions=
-	set guifont=Ubuntu\ Mono\ 9
+	set guifont=Ubuntu\ Mono\ 13
 	"Monaco\ Regular\ 8
 	set lines=999 columns=87 linespace=0
 endif
@@ -194,35 +195,13 @@ nnoremap <C-q> :Bdelete<CR>
 nnoremap <C-Left> :bprevious<CR>
 nnoremap <C-Right> :bnext<CR>
 
-"nmap <F2> :set et sw=2 ts=2 sts=2<CR>
+nmap <F3> :set et sw=4 ts=4 sts=4<CR>
 "nmap <F3> :set noet sw=2 ts=2 sts=2<CR>
 "imap <F2> <ESC>:w<CR>i
 
 "map <F4> :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
 
 "map <F5> :!ctags -R –c++-kinds=+p –fields=+iaS –extra=+q .<CR>
-"map <F6> :Dox<CR>
-"map <F7> :make<CR>
-"map <S-F7> :make clean all<CR>
-"map <F12> <C-]>
-
-"if &diff
-  "map <M-Down> ]c
-  "map <M-Up> [c
-  "map <M-Left> do
-  "map <M-Right> dp
-  "map <F9> :new<CR>:read !svn diff<CR>:set syntax=diff buftype=nofile<CR>gg
-"else
-  ":setlocal spell spelllang=en
-  "set spellfile=~/.vim/spellfile.add
-  "map <M-Down> ]s
-  "map <M-Up> [s
-"endif
-
-"augroup vimrc_autocmds
-  "autocmd BufEnter * highlight OverLength ctermbg=red ctermfg=white guibg=#592929
-  "autocmd BufEnter * match OverLength /\%81v.\+/
-"augroup END
 
 autocmd BufNewFile,BufRead /usr/include/* set syntax=cpp
 
@@ -240,7 +219,7 @@ autocmd BufNewFile,BufRead * call CppSetSyntax()
 "set clipboard=unnamed
 set clipboard=unnamedplus
 
-autocmd Filetype python setlocal et ts=2 sts=2 sw=2
+autocmd Filetype python setlocal et ts=4 sts=4 sw=4
 autocmd Filetype cmake setlocal et ts=2 sts=2 sw=2
 autocmd Filetype cpp setlocal et ts=2 sts=2 sw=2
 autocmd Filetype java setlocal et ts=2 sts=2 sw=2
@@ -285,25 +264,54 @@ autocmd FileType cuda set ft=cpp.cuda
 
 function s:GZ_VSplit()
   vsplit
-  vertical resize 86
+  vertical resize 98
 endfunction
 
 function s:GZ_HighLight()
   hi Normal guibg=NONE ctermbg=NONE
 endfunction
 
+let s:gz_cur_guifont = &guifont
+
+function! s:GZ_InFontSize()
+  let l:fs = substitute(&guifont, '^.* \(\d\+\)$', '\1', '')
+  let l:gs = l:fs + 1
+  let l:guifont = substitute(&guifont, l:fs, l:gs, '')
+  let &guifont = l:guifont
+endfunction
+
+function! s:GZ_DeFontSize()
+  let l:fs = substitute(&guifont, '^.* \(\d\+\)$', '\1', '')
+  let l:gs = l:fs - 1
+  let l:guifont = substitute(&guifont, l:fs, l:gs, '')
+  let &guifont = l:guifont
+endfunction
+
+function! s:GZ_ReFontSize()
+  let &guifont = s:gz_cur_guifont
+endfunction
+
+function! s:GZ_FontSize(gs)
+  let l:fs = substitute(&guifont, '^.* \(\d\+\)$', '\1', '')
+  let l:guifont = substitute(&guifont, l:fs, a:gs, '')
+  let &guifont = l:guifont
+endfunction
+
 let s:GZCommandByName = {
       \ 'VSplit': function('s:GZ_VSplit'),
       \ 'HighLight': function('s:GZ_HighLight'),
+      \ 'InFontSize': function('s:GZ_InFontSize'),
+      \ 'DeFontSize': function('s:GZ_DeFontSize'),
+      \ 'ReFontSize': function('s:GZ_ReFontSize'),
+      \ 'FontSize': function('s:GZ_FontSize'),
       \ }
 
-function s:GZExecute(CommandName)
-  call s:GZCommandByName[a:CommandName]()
+function s:GZExecute(nme, ...)
+  call call(s:GZCommandByName[a:nme], a:000)
 endfunction
 
 function s:GZSubCommandNames(ArgLead, CmdLine, CursorPos)
   return reverse(keys(s:GZCommandByName))
 endfunction
 
-command -nargs=1 -complete=customlist,s:GZSubCommandNames
-      \ GZ call s:GZExecute(<f-args>)
+command -nargs=* -complete=customlist,s:GZSubCommandNames GZ call s:GZExecute(<f-args>)
