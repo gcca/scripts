@@ -20,8 +20,8 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 
 Plugin 'ctrlpvim/ctrlp.vim'
-let g:ctrlp_working_path_mode = 'ra'
-let g:ctrlp_custom_ignore = '\v[\/](build|docs|api-doc|target|__pycache__|.*-env)$'
+let g:ctrlp_working_path_mode = '.'
+let g:ctrlp_custom_ignore = '\v[\/](build|docs|api-doc|target|__pycache__|htmlcov|node_modules|.*-env)$'
 
 Plugin 'scrooloose/nerdcommenter'
 
@@ -59,25 +59,21 @@ let g:cpp_concepts_highlight = 1
 let g:cpp_no_function_highlight = 1
 "let c_no_curly_error=1
 
-if 'gcca' != s:configName
-  Plugin 'ycm-core/YouCompleteMe'
-  let g:ycm_global_ycm_extra_conf = '~/.vim/bundle/YouCompleteMe/third_party/ycmd/.ycm_extra_conf.py'
-  let g:ycm_server_python_interpreter = '/.gcca/q/snk809-env/bin/python'
-  "'/usr/bin/python3'
-  let g:ycm_min_num_of_chars_for_completion = 3
-  let g:ycm_max_num_candidates = 5
-  let g:ycm_auto_trigger = 0
-  let g:ycm_autoclose_preview_window_after_completion = 1
-  let g:ycm_complete_in_comments = 1
-  let g:ycm_complete_in_strings = 1
-  let g:ycm_add_preview_to_completeopt = 0
-  set completeopt-=preview
-  nnoremap <C-y> :YcmComplete GoTo<CR>
-  autocmd BufNewFile,BufRead *.cu set filetype=cpp
-  autocmd BufNewFile,BufRead *.cuh set filetype=cpp
-  autocmd BufNewFile,BufRead /usr/include/* set filetype=cpp
-  autocmd BufNewFile,BufRead /home/gcca/src/llvm/projects/libcxx/include/* set filetype=cpp
-endif
+Plugin 'ycm-core/YouCompleteMe'
+let g:ycm_global_ycm_extra_conf = '~/.vim/bundle/YouCompleteMe/third_party/ycmd/.ycm_extra_conf.py'
+"let g:ycm_server_python_interpreter = '/usr/bin/python'
+let g:ycm_min_num_of_chars_for_completion = 3
+let g:ycm_max_num_candidates = 5
+let g:ycm_auto_trigger = 0
+let g:ycm_autoclose_preview_window_after_completion = 1
+let g:ycm_complete_in_comments = 1
+let g:ycm_complete_in_strings = 1
+let g:ycm_add_preview_to_completeopt = 0
+set completeopt-=preview
+nnoremap <C-y> :YcmComplete GoTo<CR>
+autocmd BufNewFile,BufRead *.cu set filetype=cpp
+autocmd BufNewFile,BufRead *.cuh set filetype=cpp
+autocmd BufNewFile,BufRead /usr/include/* set filetype=cpp
 
 Plugin 'moll/vim-bbye'
 
@@ -159,15 +155,14 @@ syntax enable
 set t_Co=256
 let base16colorspace=256
 set background=dark
-colorscheme base16-grayscale-dark "base16-monokai
+colorscheme base16-atelier-plateau-light "base16-cupertino
 
 if !has("gui_running")
 	set termguicolors
-  hi Normal guibg=NONE ctermbg=NONE
+  "hi Normal guibg=NONE ctermbg=NONE
 else
 	set guioptions=
-	set guifont=Ubuntu\ Mono\ 13
-	"Monaco\ Regular\ 8
+	set guifont=Inconsolata\ 12
 	set lines=999 columns=87 linespace=0
 endif
 
