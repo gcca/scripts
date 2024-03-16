@@ -1,0 +1,73 @@
+set runtimepath^=/Volumes/KINGSTON_gcca/Developer/vim
+set nocompatible
+
+filetype off
+
+call plug#begin('/Volumes/KINGSTON_gcca/Developer/vim/plugged')
+runtime plug_basics.vim
+runtime plug_themes.vim
+runtime plug_coc.vim
+runtime plug_airline.vim
+runtime plug_git.vim
+call plug#end()
+
+set encoding=utf-8
+
+set nobackup
+set nowritebackup
+
+set updatetime=300
+set signcolumn=yes
+
+set mouse=a
+set backspace=indent,eol,start
+
+syntax enable
+
+set number
+
+set wildignorecase
+set ignorecase
+set smartcase
+set hlsearch
+set incsearch
+
+set magic
+
+set showmatch
+
+set expandtab
+set smarttab
+set shiftwidth=2
+set tabstop=2
+set softtabstop=2
+
+set smartindent
+
+set ai
+set si
+set nowrap
+
+set termguicolors
+set t_Co=256
+let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+
+colorscheme vim-monokai-tasty
+hi Normal guibg=black ctermbg=NONE
+"hi clear
+
+autocmd BufWritePre * %s/\s\+$//e
+
+inoremap <C-g> <Esc>:w!<CR> "a
+nnoremap <C-g> :w!<CR>
+
+nnoremap <C-k> :bprevious<CR>
+nnoremap <C-l> :bnext<CR>
+nnoremap <C-j> :Bwipeout<CR>
+
+nnoremap U :redo<CR>
+set pastetoggle=<C-y>
+
+
+nmap <leader>ch :CocCommand clangd.switchSourceHeader<CR>
