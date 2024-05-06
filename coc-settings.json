@@ -1,0 +1,15 @@
+{
+  "clangd.path": "/Volumes/KINGSTON_gcca/Developer/vim/coc/extensions/coc-clangd-data/install/17.0.3/clangd_17.0.3/bin/clangd",
+  "colors.enable": true,
+  "inlayHint.enable": false,
+  "pyright.enable": true,
+  "pyright.organizeimports.provider": "isort",
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.pylintArgs": [
+    "--django-settings-module=asset.settings.development"
+  ],
+  "python.linting.pylintEnabled": true,
+  "python.pythonPath": "/Volumes/KINGSTON_gcca/Developer/env/bin/python",
+  "python.venvPath": "/Volumes/KINGSTON_gcca/Developer/env"
+}

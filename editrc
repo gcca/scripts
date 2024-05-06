@@ -1,0 +1,2 @@
+bind "^[[A" ed-search-prev-history
+bind "^[[B" ed-search-next-history
