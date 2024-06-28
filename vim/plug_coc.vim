@@ -1,6 +1,6 @@
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 
-let g:coc_config_home="/Volumes/KINGSTON_gcca/Developer/vim"
+"let g:coc_config_home="/Volumes/KINGSTON_gcca/Developer/vim"
 
 set encoding=utf-8
 set nobackup

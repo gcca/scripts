@@ -1,20 +1,26 @@
-set runtimepath^=/Volumes/KINGSTON_gcca/Developer/vim
+"set runtimepath^=/Volumes/KINGSTON_gcca/Developer/vim
 set nocompatible
 
 filetype off
 
-call plug#begin('/Volumes/KINGSTON_gcca/Developer/vim/plugged')
+call plug#begin()
+"('/Volumes/KINGSTON_gcca/Developer/vim/plugged')
 runtime plug_basics.vim
 runtime plug_themes.vim
 runtime plug_coc.vim
-runtime plug_airline.vim
+"runtime plug_airline.vim
+runtime plug_lightline.vim
 runtime plug_git.vim
 call plug#end()
 
 set encoding=utf-8
 
-set nobackup
-set nowritebackup
+"set nobackup nowritebackup noswapfile noundofile
+set backupdir=$HOME/.vim/cache/backup/
+set directory=$HOME/.vim/cache/swap/
+set undodir=$HOME/.vim/cache/undo/
+set backup swapfile undofile
+
 
 set updatetime=300
 set signcolumn=yes
@@ -53,9 +59,8 @@ set t_Co=256
 let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 
-colorscheme vim-monokai-tasty
-hi Normal guibg=black ctermbg=NONE
-"hi clear
+set background=dark
+colorscheme tokyonight-night
 
 autocmd BufWritePre * %s/\s\+$//e
 
@@ -71,3 +76,22 @@ set pastetoggle=<C-y>
 
 
 nmap <leader>ch :CocCommand clangd.switchSourceHeader<CR>
+
+function! DarkMode()
+  hi Normal guibg=black ctermbg=black
+  hi NormalNC guibg=black ctermbg=black
+  hi SignColumn ctermbg=black guibg=black
+
+  hi WinSeparator guifg=#070707 guibg=NONE gui=NONE
+  hi VertSplit guifg=black ctermfg=black ctermbg=black guibg=black cterm=NONE gui=NONE
+
+  hi NeotreeNormal guibg=black ctermbg=black
+  hi NeotreeEndOfBuffer guibg=black guifg=black ctermbg=black ctermfg=black
+endfunction
+
+command! DarkMode call DarkMode()
+
+set nofoldenable
+set foldmethod=indent
+
+" s/export \(\w\+\)=\(\(["+/]\|\w\)\+\)/  set \1 \2

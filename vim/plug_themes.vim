@@ -1,6 +1,9 @@
 "Plug 'flazz/vim-colorschemes'
-"Plug 'Erichain/vim-monokai-pro'
+
+Plug 'Erichain/vim-monokai-pro'
+
 "Plug 'lifepillar/vim-solarized8'
+
 "Plug 'rafi/awesome-vim-colorschemes'
 
 let g:everforest_background = 'hard'
@@ -30,3 +33,18 @@ Plug 'tomasr/molokai'
 Plug 'fenetikm/falcon'
 
 Plug 'rafalbromirski/vim-aurora'
+
+Plug 'folke/tokyonight.nvim'
+
+Plug 'EdenEast/nightfox.nvim'
+
+Plug 'rebelot/kanagawa.nvim'
+
+Plug 'bluz71/vim-nightfly-colors'
+
+Plug 'joshdick/onedark.vim'
+
+Plug 'shaunsingh/solarized.nvim'
+
+Plug 'nvim-treesitter/nvim-treesitter', { 'do': ':TSUpdate' }
+Plug 'daltonmenezes/aura-theme', { 'rtp': 'packages/neovim' }
