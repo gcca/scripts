@@ -48,3 +48,11 @@ Plug 'shaunsingh/solarized.nvim'
 
 Plug 'nvim-treesitter/nvim-treesitter', { 'do': ':TSUpdate' }
 Plug 'daltonmenezes/aura-theme', { 'rtp': 'packages/neovim' }
+
+Plug 'craftzdog/solarized-osaka.nvim'
+"function! s:solarized_osaka()
+"    hi LineNr guifg=#423200
+"endfunction
+"autocmd VimEnter * call s:solarized_osaka()
+
+Plug 'barrientosvctor/abyss.nvim'

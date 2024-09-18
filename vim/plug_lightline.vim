@@ -6,7 +6,7 @@ Plug 'mengelbrecht/lightline-bufferline'
 " simpleblack
 
 let g:lightline = {
-  \ 'colorscheme': 'tokyonight',
+  \ 'colorscheme': 'solarized',
   \ 'active': {
   \   'left': [['mode','paste'], ['readonly','absolutepath','gitbranch','modified']],
   \ },

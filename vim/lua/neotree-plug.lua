@@ -7,14 +7,15 @@ vim.fn.sign_define("DiagnosticSignInfo",
 vim.fn.sign_define("DiagnosticSignHint",
   { text = "󰌵", texthl = "DiagnosticSignHint" })
 
-vim.cmd([[nnoremap <leader>nt :Neotree reveal<cr>:wincmd p<cr>]])
+vim.cmd([[nnoremap <leader>nt :Neotree buffers<cr>:wincmd p<cr>]])
 
 require("neo-tree").setup({
   close_if_last_window = true,
   default_component_configs = {
     indent = {
-      indent_size = 1,
+      indent_size = 3,
       indent_marker = " ",
+      last_indent_marker = " ",
     },
     modified = {
       symbol = "✎",
@@ -37,8 +38,20 @@ require("neo-tree").setup({
     },
   },
   window = {
-    width = 27,
+    width = 29,
     side = "left",
     focus = false,
+  },
+  buffers = {
+    follow_current_file = {
+      enabled = true,
+      leave_dirs_open = true,
+    },
+  },
+  filesystem = {
+    follow_current_file = {
+      enabled = true,
+      leave_dirs_open = false,
+    },
   },
 })

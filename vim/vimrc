@@ -9,7 +9,7 @@ runtime plug_basics.vim
 runtime plug_themes.vim
 runtime plug_coc.vim
 "runtime plug_airline.vim
-runtime plug_lightline.vim
+"runtime plug_lightline.vim
 runtime plug_git.vim
 call plug#end()
 
@@ -60,18 +60,21 @@ let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 
 set background=dark
-colorscheme tokyonight-night
+colorscheme solarized-osaka
 
 autocmd BufWritePre * %s/\s\+$//e
 
-inoremap <C-g> <Esc>:w!<CR> "a
-nnoremap <C-g> :w!<CR>
+nnoremap <silent>U :redo<CR>
 
-nnoremap <C-k> :bprevious<CR>
-nnoremap <C-l> :bnext<CR>
-nnoremap <C-j> :Bwipeout<CR>
+inoremap <silent><C-g> <Esc>:w!<CR> "a
+nnoremap <silent><C-g> :w!<CR>
 
-nnoremap U :redo<CR>
+nnoremap <silent><C-k> :bprevious<CR>
+nnoremap <silent><C-l> :bnext<CR>
+nnoremap <silent><C-j> :Bwipeout<CR>
+
+nnoremap <C-p> :<cmd>lua require('telescope.builtin').find_files()<CR>
+
 set pastetoggle=<C-y>
 
 
@@ -89,9 +92,26 @@ function! DarkMode()
   hi NeotreeEndOfBuffer guibg=black guifg=black ctermbg=black ctermfg=black
 endfunction
 
+function! TransparentMode()
+  hi Normal guibg=NONE ctermbg=NONE
+  hi NormalNC guibg=NONE ctermbg=NONE
+  hi SignColumn ctermbg=NONE guibg=NONE
+  hi EndOfBuffer guibg=NONE ctermbg=NONE
+
+  hi NeotreeNormal guibg=NONE ctermbg=NONE
+  hi NeotreeNormalNC guibg=NONE ctermbg=NONE
+  hi NormalFloat guibg=NONE ctermbg=NONE
+  hi NeotreeEndOfBuffer guibg=NONE ctermbg=NONE
+endfunction
+
 command! DarkMode call DarkMode()
+command! TransparentMode call TransparentMode()
 
 set nofoldenable
 set foldmethod=indent
 
+set laststatus=0
+
 " s/export \(\w\+\)=\(\(["+/]\|\w\)\+\)/  set \1 \2
+
+" vim: set sw=4 ts=4 sts=4 et:
