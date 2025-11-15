@@ -1,0 +1,32 @@
+# vim:set sw=4 ts=4 sts=4 et ft=fish fdm=marker fenc=utf-8:
+
+command = /opt/homebrew/bin/fish -l
+
+theme = light:Monokai Pro Octagon,dark:Matte Black
+
+scrollback-limit = 5000
+
+cursor-style               = block
+cursor-style-blink         = true
+shell-integration-features = no-cursor
+
+macos-titlebar-style        = hidden
+macos-non-native-fullscreen = true
+
+window-save-state = never
+window-width      = 90
+window-height     = 25
+window-position-x = 340
+window-position-y = 90
+
+quit-after-last-window-closed = true
+
+font-family  = "Iosevka NFM Light"
+font-size    = 12
+font-thicken = true
+
+copy-on-select          = clipboard
+mouse-hide-while-typing = true
+
+desktop-notifications = false
+bell-features = sound,title,attention
