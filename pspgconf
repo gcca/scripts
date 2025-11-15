@@ -1,0 +1,5 @@
+theme = 17
+
+bold_labels = true
+bold_keywords = true
+no_cursor = false

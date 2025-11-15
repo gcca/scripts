@@ -1,0 +1,13 @@
+{	
+//  "\u001b[1;3A": "CursorPageUp",
+//  "\u001b[1;3B": "CursorPageDown"
+
+  "AltLeft":   "WordLeft",
+  "AltRight":  "WordRight",
+
+  "CtrlU": "Undo",
+  "CtrlShiftU": "Redo",
+
+  "Alt-/": "lua:comment.comment",
+  "CtrlUnderscore": "lua:comment.comment"
+}
