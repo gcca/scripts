@@ -1,0 +1,52 @@
+[alias]
+	st = status
+	co = checkout
+	ci = commit
+	br = branch
+	pl = pull
+	ph = push
+[pull]
+	rebase = true
+[commit]
+	gpgsign = true
+	verbose = true
+[gpg]
+	program = gpg
+[core]
+  pager = delta
+	editor = nvim
+[init]
+	defaultBranch = master
+[rerere]
+	enabled = true
+	autoupdate = true
+[advice]
+	mergeConflict = false
+	forceDeleteBranch = false
+[diff]
+	algorithm = histogram
+	colorMoved = plain
+	mnemonicPrefix = true
+[column]
+	ui = auto
+[branch]
+	sort = -committerdate
+[tag]
+	sort = -version:refname
+[push]
+	autoSetupRemote = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[delta]
+  features = side-by-side navigate decorations line-numbers dark mantis-shrimp-lite
+  true-color = always
+  plus-style = "syntax #012800"
+  minus-style = "syntax #340001"
+  plus-emph-style = "syntax #012800"
+  minus-emph-style = "syntax #340001"
+  zero-style = normal
+[include]
+	path = ~/.config/delta/themes.gitconfig

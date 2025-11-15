@@ -1,0 +1,43 @@
+# -*- mode: conf-unix; tab-width: 4; indent-tabs-mode: nil; coding: utf-8-unix; -*-
+# vim:set sw=4 ts=4 sts=4 et ft=conf fdm=marker fenc=utf-8:
+
+command = /opt/homebrew/bin/fish -l
+
+# theme = light: Solarized Dark Patched,dark: Terafox
+theme = Batman
+
+scrollback-limit = 250000
+
+cursor-style               = block
+cursor-style-blink         = true
+shell-integration-features = no-title
+
+macos-titlebar-style        = transparent
+macos-non-native-fullscreen = false
+macos-window-buttons        = visible
+
+window-save-state        = never
+window-width             = 109
+window-height            = 30
+window-position-x        = 340
+window-position-y        = 90
+window-inherit-font-size = false
+
+quit-after-last-window-closed = true
+
+font-family            = "Iosevka Term SS08"
+font-family            = "IosevkaTerm NFM Medium"
+font-style             = Medium
+font-style-bold        = Bold
+font-style-italic      = "Medium Italic"
+font-style-bold-italic = "Bold Italic"
+font-size              = 13
+font-thicken           = false
+
+copy-on-select          = clipboard
+mouse-hide-while-typing = true
+
+desktop-notifications = false
+bell-features = audio,title,attention
+
+macos-option-as-alt = left
