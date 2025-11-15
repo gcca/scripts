@@ -1,0 +1,5 @@
+CompileFlags:
+  Add:
+    - -I/opt/homebrew/opt/libmemcached/include
+    - -I/opt/homebrew/opt/rabbitmq-c/include
+    - -isystem/usr/local/include

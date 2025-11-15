@@ -1,0 +1,20 @@
+# Theme history for ghostty-config.
+# Set a theme by copying themes.<id> onto the single `theme =` line
+# in ghostty-config, then setting `active` to that id.
+# Only one id is active. Add a new key here before using a theme that is not listed.
+# Names seen but never saved as a full theme line: Rapture, Shaman, Under The Sea.
+
+active = "tokyonight-firefly"
+
+[themes]
+tokyonight-firefly = "light: TokyoNight Night,dark: Firefly Traditional"
+solarized-terafox = "light: Solarized Dark Patched,dark: Terafox"
+solarized-hc-spacedust = "light: Solarized Dark Higher Contrast, dark: Spacedust"
+srcery-spacedust = "light: Srcery, dark: Spacedust"
+blueberry-lavandula = "light: Blue Berry Pie, dark: Lavandula"
+galizur-blueberry = "light: Galizur, dark: Blue Berry Pie"
+seti = "Seti"
+tokyonight-night = "light: TokyoNight, dark: TokyoNight Night"
+rose-pine-dawn = "Rose Pine Dawn"
+flexoki-dark = "Flexoki Dark"
+lavandula-forest = "light: Lavandula, dark: Forest Blue"
