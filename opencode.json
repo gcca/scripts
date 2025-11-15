@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "mcp": {
+    "xai-docs": {
+      "enabled": false,
+      "type": "remote",
+      "url": "https://docs.x.ai/api/mcp"
+    }
+  },
+  "mode": {
+    "build": {
+      "description": "Build agent: Grok Code Fast",
+      "model": "xai/grok-4-1-fast",
+      "temperature": 0.5
+    },
+    "plan": {
+      "description": "Plan agent: Grok 4.1 Fast",
+      "model": "xai/grok-code-fast-1",
+      "temperature": 0.3
+    }
+  },
+  "model": "xai/grok-code-fast-1",
+  "permission": {
+    "*": "allow"
+  }
+}
