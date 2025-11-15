@@ -1,0 +1,7 @@
+architect: true
+#model: xai/grok-4-1-fast-reasoning
+model: anthropic/claude-opus-4-5
+editor-model: xai/grok-code-fast-1
+auto-commits: false
+watch-files: true
+yes-always: true
