@@ -1,0 +1,1186 @@
+;;; init.el -*- lexical-binding: t; indent-tabs-mode: nil; tab-width: 2; -*-
+
+;;; Terminal compatibility
+
+;; Ghostty advertises an xterm-compatible TERM that Emacs does not alias.
+;; Without xterm's terminal init, focus reports leak literal "I"/"O"
+;; characters into buffers; with it, xterm's function map decodes them.
+(dolist (term '(("xterm-ghostty" . "xterm")
+                ("ghostty" . "xterm")))
+  (add-to-list 'term-file-aliases term))
+
+;; Terminal-only builds (no x-create-frame) never preload mwheel.el, so
+;; mouse-wheel-mode's init-value of t does not install wheel-up/down
+;; bindings.  xterm-mouse-mode remaps buttons 4/5 to those events, which
+;; then appear unbound.  Require mwheel so scrolling works.
+(defun gcca/setup-tty ()
+  "Enable mouse clicks and wheel scrolling in terminal frames."
+  (unless (or noninteractive (display-graphic-p))
+    (require 'mwheel)
+    (mouse-wheel-mode 1)
+    (xterm-mouse-mode 1)))
+
+(gcca/setup-tty)
+(add-hook 'tty-setup-hook #'gcca/setup-tty)
+
+;;; Package management
+
+(setq straight-check-for-modifications '(check-on-save find-when-checking))
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name
+        "straight/repos/straight.el/bootstrap.el"
+        (or (bound-and-true-p straight-base-dir)
+            user-emacs-directory)))
+      (bootstrap-version 7))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+(straight-use-package 'use-package)
+(setq straight-use-package-by-default t
+      ;; Defer packages by default; use :demand on startup-critical ones.
+      use-package-always-defer t)
+
+;;; Terminal input
+
+;; Kitty Keyboard Protocol: lets terminals like Ghostty report
+;; unambiguous key events (e.g. C-S-z) instead of legacy control bytes.
+(use-package kkp
+  :demand t
+  :init
+  (global-kkp-mode 1))
+
+;;; Core settings
+
+;;;; Startup and defaults
+
+(setq inhibit-startup-screen t
+      ring-bell-function 'ignore
+      create-lockfiles nil
+      ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
+      read-process-output-max (* 1024 1024)
+      ;; Native compilation runs in the background; keep its warnings out of
+      ;; the way (they land in *Warnings* and are rarely actionable here).
+      native-comp-async-report-warnings-errors 'silent)
+
+;;;; PATH (GUI Emacs does not load fish config.fish)
+
+;; Bun installs to ~/.bun/bin, the default OPAM switch to
+;; ~/.opam/default/bin, `cargo install' to ~/.cargo/bin, nimble to
+;; ~/.nimble/bin, `go install' to ~/go/bin, the C3 toolchain (c3c, c3fmt,
+;; c3lsp) to ~/.c3, and Homebrew tools to /opt/homebrew/bin.  Without
+;; these, `executable-find' misses language tools and their Eglot servers.
+;; Prepend in listed priority order and de-duplicate, so reloading init.el
+;; never reorders precedence or stacks duplicates onto exec-path/$PATH.
+(let ((dirs (seq-filter #'file-directory-p
+                        (mapcar #'expand-file-name
+                                '("~/.bun/bin" "~/.opam/default/bin"
+                                  "~/.cargo/bin" "~/.nimble/bin" "~/go/bin"
+                                  "~/.c3" "/opt/homebrew/bin"
+                                  "/opt/homebrew/sbin" "/usr/local/bin")))))
+  (setq exec-path (delete-dups (append dirs exec-path)))
+  (let ((path (split-string (or (getenv "PATH") "") path-separator t)))
+    (setenv "PATH" (string-join (delete-dups (append dirs path))
+                                path-separator))))
+
+;;;; macOS clipboard
+
+(defun gcca/pbcopy-string (string)
+  "Copy STRING to the macOS clipboard via pbcopy."
+  ;; call-process-region with a string START sends it as stdin (END
+  ;; ignored) and waits until pbcopy exits, so the whole text is written.
+  (let ((status (call-process-region string nil "pbcopy")))
+    (unless (eq status 0)
+      (error "pbcopy failed with status %s" status))))
+
+(defun gcca/pbcopy (beg end)
+  "Copy the region (BEG..END) to the macOS clipboard via pbcopy."
+  (interactive "r")
+  (unless (use-region-p)
+    (user-error "No active region to copy"))
+  (gcca/pbcopy-string (buffer-substring-no-properties beg end))
+  (message "Copied %d characters to clipboard" (- end beg)))
+
+(defun gcca/pbpaste ()
+  "Insert the macOS clipboard at point via pbpaste.
+Reads clipboard synchronously.  With an active region and
+`delete-selection-mode', the selection is replaced."
+  (interactive "*")
+  (let ((text
+         (with-temp-buffer
+           (let ((status (call-process "pbpaste" nil t nil)))
+             (unless (eq status 0)
+               (error "pbpaste failed with status %s" status))
+             (buffer-string)))))
+    (insert text)
+    (message "Pasted %d characters from clipboard" (length text))))
+
+;; Replace active region when pasting (same as yank under delete-selection-mode).
+(put 'gcca/pbpaste 'delete-selection t)
+
+(defun gcca/copy-buffer-file-name (&optional arg)
+  "Copy the current buffer's file name to the clipboard.
+Pushes to the kill ring (in-Emacs yank / GUI clipboard) and to the
+macOS system clipboard via pbcopy (terminal Emacs has no
+interprogram-cut).  With no prefix ARG, copy the absolute path; with
+one \\[universal-argument], the base name only; with two, the path
+relative to the project root (falling back to the absolute path)."
+  (interactive "P")
+  (let ((file (or buffer-file-name
+                  (and (derived-mode-p 'dired-mode) default-directory))))
+    (unless file
+      (user-error "Buffer is not visiting a file"))
+    (let ((name
+           (cond
+            ((equal arg '(4))
+             (file-name-nondirectory (directory-file-name file)))
+            ((equal arg '(16))
+             (if-let* ((proj (project-current nil (file-name-directory file))))
+                 (file-relative-name file (project-root proj))
+               file))
+            (t file))))
+      (kill-new name)
+      (gcca/pbcopy-string name)
+      (message "Copied: %s" name))))
+
+;;;; Buffer commands
+
+(defun gcca/revert-all-buffers ()
+  "Revert all unmodified file-visiting buffers."
+  (interactive)
+  (let ((reverted 0)
+        (skipped 0))
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when buffer-file-name
+          (if (and (file-exists-p buffer-file-name)
+                   (not (buffer-modified-p)))
+              (progn
+                (revert-buffer t t t)
+                (setq reverted (1+ reverted)))
+            (setq skipped (1+ skipped))))))
+    (message "Reverted %d buffers; skipped %d modified/missing"
+             reverted skipped)))
+
+;;;; Files and backups
+
+(let ((backup-dir (file-name-as-directory
+                   (expand-file-name "backup" user-emacs-directory))))
+  (make-directory backup-dir t)
+  (setq backup-directory-alist         `(("." . ,backup-dir))
+        ;; With UNIQUIFY (t), only the directory part of the replacement is
+        ;; used, so the trailing slash matters: without it auto-save files
+        ;; land in backup-dir's parent.
+        auto-save-file-name-transforms `((".*" ,backup-dir t))
+        backup-by-copying t
+        version-control t
+        delete-old-versions t
+        kept-new-versions 6))
+(setq vc-follow-symlinks t)
+
+;;;; Shell
+
+;; Prefer fish for interactive and non-interactive shell executions
+;; (M-x shell, compile, M-!, M-&, etc.) and any child that reads $SHELL.
+(let ((fish (or (executable-find "fish") "/opt/homebrew/bin/fish")))
+  (setq shell-file-name fish
+        explicit-shell-file-name fish
+        ;; `M-x shell' launches `explicit-shell-file-name' with the args in
+        ;; the variable named after it: `explicit-fish-args'.  `-P' is
+        ;; private mode (no history read or persisted).
+        explicit-fish-args '("-P"))
+  (setenv "SHELL" fish))
+
+;;;; Undo history
+
+;; Built-in linear undo/redo, plus persistent history like Vim's undofile.
+(keymap-global-set "C-z" #'undo-only)
+(keymap-global-set "C-S-z" #'undo-redo)
+
+(use-package undo-fu-session
+  :demand t
+  :config
+  (setq undo-fu-session-directory
+        (expand-file-name "undo" user-emacs-directory))
+  (make-directory undo-fu-session-directory t)
+  (undo-fu-session-global-mode))
+
+;;;; Display and history
+
+(setq display-line-numbers-width 4
+      display-line-numbers-type 'relative)
+(add-hook 'prog-mode-hook #'display-line-numbers-mode)
+(add-hook 'text-mode-hook #'display-line-numbers-mode)
+;; Typing replaces the active region (needed for multi-cursor rename flows).
+(delete-selection-mode 1)
+(recentf-mode 1)
+(setq recentf-exclude '("/straight/repos/" "/backup/" "/undo/"))
+(savehist-mode 1)
+(save-place-mode 1)
+(setq history-delete-duplicates t
+      require-final-newline t)
+(setq-default indent-tabs-mode nil
+              tab-width 2
+              standard-indent 2)
+
+;;;; Whitespace
+
+;; Buffer-local so Markdown/Org and similar stay untouched.
+(defun gcca/enable-whitespace-cleanup ()
+  "Remove trailing whitespace before saving the current buffer."
+  (add-hook 'before-save-hook #'delete-trailing-whitespace nil t))
+
+(add-hook 'prog-mode-hook #'gcca/enable-whitespace-cleanup)
+(add-hook 'conf-mode-hook #'gcca/enable-whitespace-cleanup)
+
+;;; Build and compilation
+
+(defvar gcca/compile-directory
+  (file-name-as-directory
+   (expand-file-name command-line-default-directory))
+  "Directory used as `default-directory' for `compile' and `recompile'.")
+
+(defun gcca/project-root (&optional dir)
+  "Return the root of the project containing DIR, else DIR itself.
+DIR defaults to `default-directory'.  The result is an absolute
+directory name."
+  ;; project.el is deferred (use-package-always-defer); load before project-*.
+  (require 'project)
+  (let* ((dir (or dir default-directory))
+         (proj (project-current nil dir)))
+    (file-name-as-directory
+     (expand-file-name (if proj (project-root proj) dir)))))
+
+(defun gcca/compile-in-project (orig-fun command &optional _comint)
+  "Run `compile' under `gcca/compile-directory' with a comint buffer.
+Comint + PTY makes output show while the process runs (fish-friendly).
+`compile' records the directory in `compilation-directory', which
+`recompile' reuses."
+  (let ((default-directory gcca/compile-directory))
+    ;; Second arg t => comint mode + compilation-shell-minor-mode.
+    (funcall orig-fun command t)))
+
+(with-eval-after-load 'compile
+  (advice-add 'compile :around #'gcca/compile-in-project)
+  (setq compilation-scroll-output t
+        ;; So `recompile' runs there even before the first `compile'.
+        compilation-directory gcca/compile-directory))
+
+;; Keep compilation / shell windows scrolling as chunks arrive.
+(setq comint-scroll-to-bottom-on-output t
+      comint-move-point-for-output t
+      comint-scroll-show-maximum-output t)
+
+(defun gcca/project-shell-command-args ()
+  "Read interactive arguments for the `gcca/*shell-command-in-project' commands.
+Path completion is rooted at the session project (the project
+containing `gcca/compile-directory', the Emacs startup cwd)."
+  (let ((default-directory (gcca/project-root gcca/compile-directory)))
+    (list (read-shell-command "Shell command: ")
+          current-prefix-arg
+          shell-command-default-error-buffer)))
+
+(defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
+  "Like `shell-command', but run under the session project root.
+Synchronous: blocks Emacs until COMMAND exits (see
+`gcca/async-shell-command-in-project' for a non-blocking variant).
+Leaves the buffer's `default-directory' unchanged."
+  (interactive (gcca/project-shell-command-args))
+  (let ((default-directory (gcca/project-root gcca/compile-directory)))
+    (shell-command command output-buffer error-buffer)))
+
+(defun gcca/async-shell-command-in-project (command &optional output-buffer error-buffer)
+  "Like `async-shell-command', but run under the session project root.
+Non-blocking: runs COMMAND in a `*Async Shell Command*' buffer whose
+output streams while Emacs stays responsive.  Leaves the buffer's
+`default-directory' unchanged."
+  (interactive (gcca/project-shell-command-args))
+  (let ((default-directory (gcca/project-root gcca/compile-directory)))
+    (async-shell-command command output-buffer error-buffer)))
+
+;;; Global keybindings
+
+;;;; Execution
+
+(global-set-key (kbd "<f6>") #'recompile)
+;; C-` is free in vanilla Emacs and unused elsewhere in this config.
+;; C-` runs the async (non-blocking) variant; C-S-` the synchronous one.
+;; Ghostty+KKP reports Shift unambiguously, so C-S-` is distinct from C-`.
+(global-set-key (kbd "C-`") #'gcca/async-shell-command-in-project)
+(global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
+
+;;;; Completion
+
+;; KKP distinguishes the physical Tab key (`<tab>') from C-i (`TAB').
+;; Emacs only binds the latter in shell-command minibuffers by default.
+(keymap-set minibuffer-local-shell-command-map
+            "<tab>" #'completion-at-point)
+
+(global-set-key (kbd "M-TAB") #'completion-at-point)
+(global-set-key (kbd "C-M-i") #'completion-at-point)
+
+;;;; Shell command substring history search (fish-style)
+
+;; Type part of a command, then Up/Down (or C-r/C-s, or M-p/M-n) to walk
+;; only the history entries that contain what you typed anywhere in the
+;; command -- like fish's history search.  A thin wrapper over the stock
+;; previous/next-matching-history-element: no timers, the only extra
+;; state is the remembered search string.  Active in every read-shell-command
+;; minibuffer (M-!, M-&, and the gcca/*-in-project readers).
+
+(defvar gcca/history-search-regexp nil
+  "Literal regexp for the in-progress substring history search.")
+
+(defun gcca/history-search (older)
+  "Move to an OLDER (non-nil) or newer history item containing the input.
+A fresh invocation searches for the text before point and
+resets the history position; repeated presses keep that search text and
+walk the history."
+  (unless (memq last-command '(gcca/history-search-older
+                               gcca/history-search-newer))
+    (setq gcca/history-search-regexp
+          (regexp-quote
+           (buffer-substring-no-properties
+            (minibuffer-prompt-end) (point))))
+    (setq-local minibuffer-history-position 0))
+  (condition-case nil
+      (if older
+          (previous-matching-history-element gcca/history-search-regexp 1)
+        (next-matching-history-element gcca/history-search-regexp 1))
+    (error (message "No %s command containing this text"
+                    (if older "earlier" "later")))))
+
+(defun gcca/history-search-older ()
+  "Cycle to an older shell command containing the typed text."
+  (interactive)
+  (gcca/history-search t))
+
+(defun gcca/history-search-newer ()
+  "Cycle to a newer shell command containing the typed text."
+  (interactive)
+  (gcca/history-search nil))
+
+(dolist (key '("<up>" "M-p" "C-r"))
+  (keymap-set minibuffer-local-shell-command-map key
+              #'gcca/history-search-older))
+(dolist (key '("<down>" "M-n" "C-s"))
+  (keymap-set minibuffer-local-shell-command-map key
+              #'gcca/history-search-newer))
+
+;;;; Movement
+
+(global-set-key (kbd "C-M-]") #'forward-sexp)
+(global-set-key (kbd "C-M-[") #'backward-sexp)
+
+;; Directional window focus: S-<left/down/up/right>.
+;; Shift keeps plain arrows free for point motion.
+;; Disable shift-select so Shift+arrows do not start/extend the region
+;; (Emacs default shift-select-mode is t) and conflict with windmove.
+(setq shift-select-mode nil)
+(windmove-default-keybindings 'shift)
+(setq windmove-wrap-around t)
+
+;;;; File navigation
+
+(global-set-key (kbd "C-c o") #'ff-find-other-file)
+
+(defun gcca/save-buffer-no-fmt ()
+  "Save current buffer without running `before-save-hook' (no fmt/cleanup)."
+  (interactive)
+  (let ((before-save-hook nil))
+    (save-buffer)))
+
+(global-set-key (kbd "C-x C-S-s") #'gcca/save-buffer-no-fmt)
+
+;;; Editing
+
+;;;; Multiple cursors
+
+;; ABC: `>' / `<' are S-. / S-,.  GUI Emacs sees C-> / C-<, but Ghostty+KKP
+;; reports Shift explicitly (C-S-. / C-S-,).  Translate the latter so one
+;; set of bindings serves both, including after the C-c prefix.
+(keymap-set key-translation-map "C-S-." "C->")
+(keymap-set key-translation-map "C-S-," "C-<")
+
+;; https://github.com/magnars/multiple-cursors.el
+;; Exit multi-cursor mode with RET or C-g; insert newlines with C-j.
+(use-package multiple-cursors
+  :bind (("C->" . mc/mark-next-like-this)
+         ("C-<" . mc/mark-previous-like-this)
+         ("C-c C->" . mc/mark-all-like-this)
+         ("C-c C-<" . mc/mark-all-like-this)
+         ;; Whole-symbol matches (\_<...\_>): marking `show' skips the `show'
+         ;; inside `show_memsages'/`do_show'.  The ...-like-this keys above
+         ;; still match substrings; these `C-c s' keys match whole symbols
+         ;; only.  Symbol (not word) boundaries so snake_case stays intact --
+         ;; `_' is a word separator, so word matching would still hit `show'.
+         ("C-c s ." . mc/mark-next-symbol-like-this)
+         ("C-c s ," . mc/mark-previous-symbol-like-this)
+         ("C-c s a" . mc/mark-all-symbols-like-this)
+         ("C-S-c C-S-c" . mc/edit-lines)
+         ("C-S-<mouse-1>" . mc/add-cursor-on-click))
+  :init
+  ;; Remember run-once / run-for-all choices outside the package defaults.
+  (setq mc/list-file (expand-file-name "mc-lists.el" user-emacs-directory)))
+
+;;;; Avy
+
+;; https://github.com/abo-abo/avy
+;; Jump to visible text with a char-based decision tree (like easymotion).
+;; M-g f / M-g g stay with consult; use M-g l for line jumps.
+(use-package avy
+  :bind (("C-:" . avy-goto-char)
+         ("C-'" . avy-goto-char-2)
+         ("M-g l" . avy-goto-line)
+         ("M-g w" . avy-goto-word-1)
+         ("C-c C-j" . avy-resume))
+  :config
+  ;; Bind avy-isearch to C-' in isearch-mode-map (pick among visible matches).
+  (avy-setup-default))
+
+;;; UI
+
+;;;; Theme
+
+;; Trust every theme so `customize-themes' / `load-theme' never prompt
+;; "Loading a theme can run Lisp code.  Really load?".  Set as plain code
+;; (not via Customize) so relocating Custom to custom.el cannot drop it.
+(setq custom-safe-themes t)
+
+(define-minor-mode gcca/transparent-background-mode
+  "Show the terminal's background through Emacs terminal frames.
+
+This global mode makes only the `default' face background transparent,
+and only on terminal frames.  Graphical frames and explicitly styled UI
+faces are unaffected.  The override persists across theme changes and
+also applies to terminal frames created while the mode is enabled."
+  :global t
+  (face-spec-set 'default
+                 (and gcca/transparent-background-mode
+                      '((((type tty)) :background "unspecified")))
+                 'face-override-spec))
+
+;; The active theme (custom-enabled-themes) lives in custom.el.
+(use-package doom-themes
+  :demand t
+  :config
+  (setq doom-themes-padded-modeline t))
+
+;;;; TODO/FIXME highlighting
+
+(use-package hl-todo
+  :demand t
+  :init
+  (global-hl-todo-mode 1))
+
+;;;; Tree-sitter
+
+;; Prefer tree-sitter major modes and richer highlighting when grammars exist.
+(setq treesit-font-lock-level 4)
+
+(use-package treesit-auto
+  :demand t
+  :config
+  (setq treesit-auto-install (if noninteractive nil 'prompt))
+  (treesit-auto-add-to-auto-mode-alist 'all)
+  (global-treesit-auto-mode))
+
+;;; LSP
+
+(defun gcca/eglot-workspace-configuration (_server)
+  "Point Python servers at the active virtualenv's interpreter."
+  (when-let* (((memq major-mode '(python-mode python-ts-mode)))
+              (venv (getenv "VIRTUAL_ENV"))
+              (python (expand-file-name "bin/python" venv))
+              ((file-executable-p python)))
+    `(:python (:pythonPath ,python))))
+
+(defvar gcca/global-tsserver-path
+  (let ((bun-global (expand-file-name
+                      "~/.bun/install/global/node_modules/typescript/lib/tsserver.js")))
+    (when (file-exists-p bun-global) bun-global))
+  "Path to a globally installed TypeScript's tsserver.js.
+
+`typescript-language-server' only auto-detects TypeScript from a
+project's own node_modules; this is passed as `tsserver.fallbackPath'
+so projects with no local `typescript' devDependency still work,
+without shadowing a project's own pinned version.")
+
+(defun gcca/typescript-tsc-executable (root)
+  "Return a `tsc' executable for ROOT: project-local first, else PATH."
+  (let ((local (expand-file-name "node_modules/.bin/tsc" root)))
+    (if (file-executable-p local) local (executable-find "tsc"))))
+
+(defun gcca/typescript-native-lsp-p (tsc)
+  "Return non-nil when TSC is TypeScript >=7's native tsgo compiler.
+
+TypeScript 7 dropped tsserver.js: the language service is now native
+code built into `tsc', speaking LSP directly via `tsc --lsp --stdio'.
+`typescript-language-server' has nothing to bridge to in that case, so
+detect it by the absence of tsserver.js next to the resolved TSC."
+  (let ((tsserver (expand-file-name
+                   "../lib/tsserver.js"
+                   (file-name-directory (file-truename tsc)))))
+    (not (file-exists-p tsserver))))
+
+(defun gcca/typescript-ls-contact (&optional interactive)
+  "Eglot contact for JS/TS.
+
+TypeScript >=7 (native tsgo): talk to `tsc --lsp --stdio' directly.
+
+TypeScript <7 (classic tsserver): bridge through
+typescript-language-server, preferring project-local
+node_modules/.bin, then bunx, then PATH.  TypeScript itself is
+resolved by the server: project-local node_modules/typescript wins
+if present, else `gcca/global-tsserver-path' is used as a fallback."
+  (let* ((root (gcca/project-root))
+         (tsc (gcca/typescript-tsc-executable root)))
+    (if (and tsc (gcca/typescript-native-lsp-p tsc))
+        (list tsc "--lsp" "--stdio")
+      (let* ((local (expand-file-name
+                     "node_modules/.bin/typescript-language-server" root))
+             (bunx (executable-find "bunx"))
+             (tls (executable-find "typescript-language-server"))
+             (command
+              (cond
+               ((file-executable-p local)
+                (list local "--stdio"))
+               (bunx
+                (list bunx "typescript-language-server" "--stdio"))
+               (tls
+                (list tls "--stdio"))
+               (interactive
+                (user-error
+                 "No typescript-language-server.  Install it in the project or globally:
+  bun add -d typescript-language-server && bun install
+  bun add -g typescript-language-server"))
+               (t
+                ;; Non-interactive lookup: return a contact eglot will fail clearly on.
+                (list "typescript-language-server" "--stdio")))))
+        (append command
+                (and gcca/global-tsserver-path
+                     `(:initializationOptions
+                       (:tsserver (:fallbackPath ,gcca/global-tsserver-path)))))))))
+
+(defvar gcca/c3-home (expand-file-name "~/.c3")
+  "Root of the C3 toolchain install.
+The directory itself is on `exec-path' (see PATH above); its lib/
+holds the stdlib.")
+
+(defun gcca/c3lsp-contact (&optional _interactive)
+  "Return the Eglot contact for c3lsp using `gcca/c3-home' for the stdlib.
+
+c3lsp expects:
+- `-c3c-path' to be the c3c *binary* (it runs `c3c --version')
+- `-stdlib-path' to be the *lib* directory (it scans LIB/std for sources)
+
+Without a correct stdlib path, completion may still work from a partial index
+but Go to Definition/Declaration for stdlib symbols returns nothing."
+  (let ((c3c (executable-find "c3c"))
+        ;; c3lsp does ScanForC3(filepath.Join(stdlib-path, "std"))
+        (lib (expand-file-name "lib" gcca/c3-home)))
+    `(,(or (executable-find "c3lsp") "c3lsp")
+      ,@(and c3c (list "-c3c-path" c3c))
+      ,@(and (file-directory-p (expand-file-name "std" lib))
+             (list "-stdlib-path" lib)))))
+
+;; Servers start from `gcca/language-setup' (see Languages below).
+(use-package eglot
+  :straight nil
+  :config
+  (setq eglot-autoshutdown t
+        ;; Allow M-. into files outside the project (e.g. node_modules / deps).
+        eglot-extend-to-xref t
+        eglot-ignored-server-capabilities '(:inlayHintProvider))
+  (setq-default eglot-workspace-configuration
+                #'gcca/eglot-workspace-configuration)
+  (cl-defmethod eglot-client-capabilities :around (_server)
+    (let ((capabilities (cl-call-next-method)))
+      (plist-put (plist-get capabilities :workspace)
+                 :didChangeWatchedFiles '(:dynamicRegistration :json-false))
+      capabilities))
+  ;; Eglot already maps cmake, yaml, rust, go, zig, C/C++ and OCaml.
+  (dolist (entry
+           '((fish-mode . ("fish-lsp" "start"))
+             (nim-mode . ("nimlsp"))
+             ;; sourcekit-lsp is the xcrun shim in /usr/bin on macOS.
+             ;; SwiftPM packages work as-is; Xcode projects need a
+             ;; buildServer.json from `xcode-build-server'.
+             (swift-mode . ("sourcekit-lsp"))
+             (c3-ts-mode . gcca/c3lsp-contact)
+             ;; Keep :language-id plists -- bare mode symbols shadow eglot's
+             ;; defaults and derive ids like "tsx"/"js", so tsserver won't
+             ;; resolve JSX tags (M-.).  Use typescriptreact for *.ts as
+             ;; well (Bun/Hono JSX often lives in .ts).
+             (((js-mode :language-id "javascript")
+               (js-ts-mode :language-id "javascriptreact")
+               (tsx-ts-mode :language-id "typescriptreact")
+               (typescript-ts-mode :language-id "typescriptreact")
+               (typescript-mode :language-id "typescriptreact"))
+              . gcca/typescript-ls-contact)))
+    (add-to-list 'eglot-server-programs entry)))
+
+;;; Languages
+
+;;;; Per-language table
+
+;; :lsp      start Eglot when any of these programs is on `exec-path'
+;; :format   format on save: a function returning (PROGRAM . ARGS) or nil,
+;;           or a fixed (PROGRAM . ARGS) used when PROGRAM is installed
+;; :compile  buffer-local `compile-command'
+(defvar gcca/languages
+  '(((c-ts-mode c++-ts-mode)
+     :lsp ("clangd" "ccls")
+     :format gcca/clang-format-command
+     :compile "cmake --build build -j 10")
+    ((python-mode python-ts-mode)
+     :lsp ("pylsp" "pyls" "basedpyright-langserver" "pyright-langserver"
+           "pyrefly" "ty" "jedi-language-server" "ruff" "ruff-lsp")
+     :format gcca/ruff-format-command)
+    (go-ts-mode
+     :lsp ("gopls")
+     :format gcca/gofmt-command
+     :compile "go test ./...")
+    (rust-ts-mode
+     :lsp ("rust-analyzer")
+     :format gcca/rustfmt-command
+     :compile "cargo test --color never")
+    ((js-ts-mode typescript-ts-mode tsx-ts-mode)
+     :lsp ("bun" "bunx" "typescript-language-server")
+     :format gcca/js-format-command
+     :compile "bun run test")
+    (swift-mode
+     :lsp ("sourcekit-lsp")
+     :format gcca/swift-format-command
+     :compile "swift test")
+    (c3-ts-mode
+     :lsp ("c3lsp")
+     :format gcca/c3fmt-command
+     :compile "c3c --ansi=no build")
+    (zig-mode
+     :lsp ("zls")
+     :compile "TERM=dumb zig build --color off test")
+    (fish-mode
+     :lsp ("fish-lsp")
+     :format ("fish_indent"))
+    (neocaml-base-mode :lsp ("ocamllsp"))
+    (nim-mode :lsp ("nimlsp"))
+    (cmake-ts-mode :lsp ("neocmakelsp" "cmake-language-server"))
+    (yaml-ts-mode :lsp ("yaml-language-server")))
+  "Per-major-mode language server programs, formatter and compile command.
+Each entry is (MODES . PLIST); MODES is a mode or list of modes,
+matched with `derived-mode-p'.")
+
+(defun gcca/language-spec ()
+  "Return the `gcca/languages' plist for the current major mode, or nil."
+  (cdr (seq-find (lambda (entry) (derived-mode-p (ensure-list (car entry))))
+                 gcca/languages)))
+
+(defun gcca/language-setup ()
+  "Apply the current major mode's `gcca/languages' entry."
+  (when-let* ((spec (gcca/language-spec)))
+    (when (seq-some #'executable-find (plist-get spec :lsp))
+      (eglot-ensure))
+    (when (plist-get spec :format)
+      (add-hook 'before-save-hook #'gcca/format-buffer nil t))
+    (when-let* ((command (plist-get spec :compile)))
+      (setq-local compile-command command))))
+
+(add-hook 'after-change-major-mode-hook #'gcca/language-setup)
+
+;;;; Format on save
+
+(defun gcca/format-command ()
+  "Return the formatter command (PROGRAM . ARGS) for this buffer, or nil."
+  (let ((fmt (plist-get (gcca/language-spec) :format)))
+    (cond ((functionp fmt) (funcall fmt))
+          ((and (consp fmt) (executable-find (car fmt))) fmt))))
+
+(defun gcca/format-buffer ()
+  "Format the current buffer with its `gcca/languages' formatter, if any.
+The buffer is piped through the command; stdout replaces the buffer
+only on exit status 0.  Stderr goes to a temp file so diagnostics
+never end up in the code."
+  (interactive)
+  (when-let* ((command (gcca/format-command)))
+    (let ((out (generate-new-buffer " *format*"))
+          (err (make-temp-file "gcca-format-")))
+      (unwind-protect
+          (let ((status (apply #'call-process-region
+                               (point-min) (point-max)
+                               (car command) nil (list out err) nil
+                               (cdr command))))
+            (if (eq status 0)
+                (replace-buffer-contents out)
+              (message "%s failed (%s): %s"
+                       (file-name-nondirectory (car command))
+                       status
+                       (with-temp-buffer
+                         (insert-file-contents err)
+                         (goto-char (point-min))
+                         (buffer-substring-no-properties
+                          (point) (line-end-position))))))
+        (kill-buffer out)
+        (delete-file err)))))
+
+;;;; Fish
+
+(use-package fish-mode
+  :config
+  (setq fish-enable-auto-indent t))
+
+;;;; Go
+
+(defun gcca/gofmt-command ()
+  "Return goimports (preferred) or gofmt, or nil when neither exists."
+  (when-let* ((fmt (or (executable-find "goimports")
+                       (executable-find "gofmt"))))
+    (list fmt)))
+
+;; One indent level per tab stop (`tab-width' is 2), like gofmt.
+(setq go-ts-indent-offset 2)
+
+;;;; OCaml
+
+(defun gcca/neocaml-enable-format-on-save ()
+  "Format OCaml source before save when ocamlformat is available."
+  (when (executable-find "ocamlformat")
+    (setq-local neocaml-format-on-save t)))
+
+;; Neocaml provides tree-sitter modes for .ml/.mli as well as dedicated
+;; modes for dune, opam, OCamllex (.mll), Menhir (.mly), and cram files.
+;; On the first OCaml buffer it offers to install its two tree-sitter grammars.
+(use-package neocaml
+  :hook (neocaml-base-mode . gcca/neocaml-enable-format-on-save))
+
+;; Add OCaml-specific commands on top of Eglot (type enclosing, destruct,
+;; interface inference, implementation/interface switching, and more).
+;; Plain editing remains available when ocamllsp is not installed.
+(use-package ocaml-eglot
+  :after neocaml
+  :hook (neocaml-base-mode . ocaml-eglot-mode)
+  :config
+  (setq ocaml-eglot-syntax-checker 'flymake))
+
+(use-package opam-switch-mode
+  :hook (neocaml-base-mode . opam-switch-mode))
+
+;;;; JavaScript / TypeScript (Bun)
+
+;; Prefer tsx/js tree-sitter modes for React/JSX (needed for eglot language
+;; ids).  Eglot still sends language-id "typescriptreact" for
+;; typescript-ts-mode (*.ts, *.mts, *.cts), not only *.tsx.
+(dolist (entry '(("\\.[mc]?ts\\'" . typescript-ts-mode)
+                 ("\\.tsx\\'" . tsx-ts-mode)
+                 ("\\.[mc]?jsx?\\'" . js-ts-mode)))
+  (add-to-list 'auto-mode-alist entry))
+
+(defun gcca/js-format-command ()
+  "Return the project's biome or prettier command, or nil.
+Only project-local node_modules/.bin tools are used, so saving never
+triggers a bunx download or applies a formatter the project did not pick."
+  (let* ((bin (expand-file-name "node_modules/.bin/" (gcca/project-root)))
+         (file (or buffer-file-name
+                   (expand-file-name "stdin.ts" default-directory)))
+         (biome (expand-file-name "biome" bin))
+         (prettier (expand-file-name "prettier" bin)))
+    (cond
+     ((file-executable-p biome)
+      (list biome "format" (concat "--stdin-file-path=" file)))
+     ((file-executable-p prettier)
+      (list prettier "--stdin-filepath" file)))))
+
+;;;; Python
+
+(defun gcca/ruff-format-command ()
+  "Return the ruff format command, or nil when ruff is unavailable.
+`--stdin-filename' lets ruff find the project's pyproject.toml/ruff.toml."
+  (when-let* ((ruff (executable-find "ruff")))
+    (append (list ruff "format")
+            (and buffer-file-name
+                 (list "--stdin-filename" buffer-file-name))
+            (list "-"))))
+
+;;;; Zig
+
+(use-package zig-mode)
+
+;;;; C3
+
+(defun gcca/c3fmt-command ()
+  "Return the c3fmt command, or nil when c3fmt is unavailable.
+The formatter receives no style or indentation overrides.  The
+`--stdin-filepath' argument lets c3fmt discover any project config."
+  (when-let* ((c3fmt (executable-find "c3fmt")))
+    (list c3fmt "--stdin" "--stdout"
+          (concat "--stdin-filepath="
+                  (or buffer-file-name default-directory)))))
+
+;; c3-ts-mode is not on MELPA; install from the upstream repo.  The
+;; tree-sitter grammar is separate — run
+;; `M-x treesit-install-language-grammar RET c3 RET' once (needs `cc').
+(use-package c3-ts-mode
+  :straight (:host github :repo "c3lang/c3-ts-mode")
+  :mode "\\.c3[it]?\\'"
+  :init
+  (add-to-list 'treesit-language-source-alist
+               '(c3 "https://github.com/c3lang/tree-sitter-c3")))
+
+;;;; Nim
+
+;; The package's autoloads send .nims/.nimble to nimscript-mode.
+(use-package nim-mode
+  :mode ("\\.nim\\(?:s\\|ble\\)\\'" . nim-mode))
+
+;;;; Rust
+
+(defun gcca/rust-edition ()
+  "Return the Rust edition to format the current buffer with.
+rustfmt reading stdin consults no Cargo.toml and falls back to the 2015
+edition, which cannot even parse `async fn'.  Use the nearest Cargo.toml
+that states an edition: a workspace member that inherits one
+\(`edition.workspace = true') states none of its own, so the search
+continues up to the workspace root.  Default to 2024."
+  (let (edition)
+    (locate-dominating-file
+     (or buffer-file-name default-directory)
+     (lambda (dir)
+       (let ((cargo (expand-file-name "Cargo.toml" dir)))
+         (and (file-readable-p cargo)
+              (with-temp-buffer
+                (insert-file-contents cargo)
+                (when (re-search-forward
+                       "^[ \t]*edition[ \t]*=[ \t]*\"\\([0-9]+\\)\"" nil t)
+                  (setq edition (match-string 1))))))))
+    (or edition "2024")))
+
+(defun gcca/rustfmt-command ()
+  "Return the rustfmt command, or nil when rustfmt is unavailable.
+Only the edition is passed, so a project rustfmt.toml still applies."
+  (when-let* ((rustfmt (executable-find "rustfmt")))
+    (list rustfmt "--edition" (gcca/rust-edition) "--emit" "stdout")))
+
+;;;; Swift
+
+(defvar gcca/swift-format-executable 'unset
+  "Cached swift-format path, nil when unavailable, `unset' before lookup.")
+
+(defun gcca/swift-format-executable ()
+  "Return the swift-format executable, or nil.
+Xcode ships swift-format inside its toolchain, off PATH; fall back to
+`xcrun --find' once and cache the result."
+  (when (eq gcca/swift-format-executable 'unset)
+    (setq gcca/swift-format-executable
+          (or (executable-find "swift-format")
+              (let ((path (and (executable-find "xcrun")
+                               (string-trim
+                                (shell-command-to-string
+                                 "xcrun --find swift-format 2>/dev/null")))))
+                (and path (file-executable-p path) path)))))
+  gcca/swift-format-executable)
+
+(defun gcca/swift-format-command ()
+  "Return the swift-format command, or nil when swift-format is unavailable.
+The formatter receives no style overrides.  For a file-visiting buffer,
+`--assume-filename' lets swift-format discover a project .swift-format."
+  (when-let* ((swift-format (gcca/swift-format-executable)))
+    (append (list swift-format)
+            (and buffer-file-name
+                 (list "--assume-filename" buffer-file-name))
+            ;; Bare stdin (no `-') is deprecated.
+            (list "-"))))
+
+(use-package swift-mode
+  :config
+  ;; Match swift-format's default 2-space indentation, so saving does not
+  ;; re-indent what was just typed.
+  (setq swift-mode:basic-offset 2))
+
+;;;; C and C++
+
+;; The default `auto-mode-alist' plus treesit-auto's remapping already
+;; send C/C++ sources and headers to c-ts-mode / c++-ts-mode.
+(add-to-list 'auto-mode-alist '("\\.\\(?:ipp\\|tpp\\|inl\\)\\'" . c++-ts-mode))
+
+(defun gcca/c++-in-raw-string-p ()
+  "Return non-nil when point is inside a C++ raw string literal."
+  (and (derived-mode-p 'c++-ts-mode)
+       (let* ((syntax-state (syntax-ppss))
+              (string-start (nth 8 syntax-state)))
+         (and (nth 3 syntax-state)
+              string-start
+              (eq (char-before string-start) ?R)))))
+
+(defun gcca/c++-raw-string-previous-indent ()
+  "Return indentation of the previous nonblank line in the same raw string."
+  (let* ((syntax-state (syntax-ppss))
+         (string-start (nth 8 syntax-state)))
+    (save-excursion
+      (catch 'indent
+        (forward-line -1)
+        (while (> (point) string-start)
+          (back-to-indentation)
+          (when (and (not (eolp))
+                     (nth 3 (syntax-ppss))
+                     (eq (nth 8 (syntax-ppss)) string-start))
+            (throw 'indent (current-indentation)))
+          (forward-line -1))
+        nil))))
+
+(defun gcca/c++-indent-for-tab-command ()
+  "Indent normally, but keep indentation inside C++ raw strings."
+  (interactive)
+  (if (gcca/c++-in-raw-string-p)
+      (let ((indent (gcca/c++-raw-string-previous-indent)))
+        (if indent
+            (indent-line-to indent)
+          (indent-to (* tab-width (1+ (/ (current-column) tab-width))))))
+    (indent-for-tab-command)))
+
+(defun gcca/c++-newline-and-indent ()
+  "Insert newline, keeping indentation inside C++ raw strings."
+  (interactive)
+  (if (gcca/c++-in-raw-string-p)
+      (let ((indent (current-indentation)))
+        (newline)
+        (indent-line-to indent))
+    (newline)))
+
+(defun gcca/c++-enable-raw-string-indentation ()
+  "Let TAB insert indentation inside C++ raw string literals."
+  (local-set-key (kbd "TAB") #'gcca/c++-indent-for-tab-command)
+  (local-set-key (kbd "<tab>") #'gcca/c++-indent-for-tab-command)
+  (local-set-key (kbd "RET") #'gcca/c++-newline-and-indent))
+
+(add-hook 'c++-ts-mode-hook #'gcca/c++-enable-raw-string-indentation)
+
+(defun gcca/clang-format-command ()
+  "Return the clang-format command, or nil when clang-format is unavailable.
+The formatter receives no style or indentation overrides.  For a
+file-visiting buffer, `--assume-filename' enables project config discovery."
+  (when-let* ((clang-format (executable-find "clang-format")))
+    (cons clang-format
+          (and buffer-file-name
+               (list (concat "--assume-filename=" buffer-file-name))))))
+
+;;;; Other file types
+
+;; treesit-auto only maps *.cmake.
+(add-to-list 'auto-mode-alist '("CMakeLists\\.txt\\'" . cmake-ts-mode))
+
+;; Mode packages whose autoloads already register their file extensions.
+(use-package markdown-mode)
+(use-package protobuf-mode)
+(use-package flatbuffers-mode)
+(use-package ninja-mode)
+
+(use-package conf-mode
+  :straight nil
+  :mode (("\\(?:\\.config/ghostty/config\\|ghostty-config\\)\\'" . conf-unix-mode)))
+
+(use-package web-mode
+  :mode (("\\.html?\\'" . web-mode)
+         ("\\.csp\\'" . web-mode))
+  :config
+  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'")))
+
+;;; Version control
+
+(use-package diff-hl
+  :demand t
+  :init
+  ;; A 2px periodic bar. The default bitmap is also thin, but its face
+  ;; background is painted across the whole fringe, which reads as a block.
+  (define-fringe-bitmap 'gcca/diff-hl-bmp-bar [3] 1 2 '(left periodic))
+  (setq diff-hl-fringe-bmp-function (lambda (_type _pos) 'gcca/diff-hl-bmp-bar))
+  (global-diff-hl-mode)
+  :config
+  ;; Fringe indicators are invisible on TTY; use the margin instead.
+  (unless (display-graphic-p)
+    (diff-hl-margin-mode 1))
+  ;; doom-themes sets :background to the same color as :foreground, so the
+  ;; fringe fills in. The user theme is reapplied after that theme and after
+  ;; face-spec-recalc, so an unspecified background stays unset.
+  (custom-set-faces
+   '(diff-hl-insert ((t (:background unspecified))))
+   '(diff-hl-change ((t (:background unspecified))))
+   '(diff-hl-delete ((t (:background unspecified))))))
+
+;;; Completion
+
+;;;; Corfu
+
+(use-package corfu
+  :demand t
+  :init (global-corfu-mode)
+  :config
+  (setq corfu-auto nil
+        corfu-popupinfo-delay '(0.5 . 0.2))
+  (corfu-popupinfo-mode 1)
+  (corfu-history-mode 1)
+  (add-to-list 'savehist-additional-variables 'corfu-history))
+
+;;;; Copilot
+
+(use-package copilot
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  :init
+  (setq copilot-indent-offset-warning-disable t)
+  :bind (:map copilot-completion-map
+              ("<tab>" . copilot-accept-completion)
+              ("TAB" . copilot-accept-completion)
+              ("C-<tab>" . copilot-accept-completion-by-word)
+              ("C-TAB" . copilot-accept-completion-by-word)
+              ("M-n" . copilot-next-completion)
+              ("M-p" . copilot-previous-completion)))
+
+;;;; Cape
+
+;; Cape: merge Eglot + dabbrev completions
+(defun gcca/cape-eglot-capf-setup ()
+  "Merge Eglot, dabbrev, and file completion in Eglot-managed buffers."
+  (setq-local completion-at-point-functions
+              (list (cape-capf-super
+                     #'eglot-completion-at-point
+                     #'cape-dabbrev)
+                    #'cape-file)))
+
+(use-package cape
+  :demand t
+  :init
+  (setq cape-dabbrev-check-other-buffers nil)
+  (add-hook 'eglot-managed-mode-hook #'gcca/cape-eglot-capf-setup)
+  :config
+  ;; Bust Eglot CAPF cache so completions stay fresh while typing.
+  (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster))
+
+;;; Minibuffer
+
+;;;; Vertico
+
+(use-package vertico
+  :demand t
+  :init (vertico-mode))
+
+;;;; Orderless
+
+(use-package orderless
+  :demand t
+  :config
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides
+        '((file (styles basic partial-completion)))
+        orderless-matching-styles
+        '(orderless-literal orderless-regexp orderless-flex)))
+
+;;;; Marginalia
+
+(use-package marginalia
+  :demand t
+  :init (marginalia-mode))
+
+;;;; Consult
+
+(use-package consult
+  :bind (("C-x b" . consult-buffer)
+         ("C-x 4 b" . consult-buffer-other-window)
+         ("C-x p b" . consult-project-buffer)
+         ("M-y" . consult-yank-pop)
+         ("M-g g" . consult-goto-line)
+         ("M-g M-g" . consult-goto-line)
+         ("M-g i" . consult-imenu)
+         ("M-g f" . consult-flymake)
+         ("M-s l" . consult-line)
+         ("M-s r" . consult-ripgrep)
+         ("M-s g" . consult-grep))
+  :init
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+  :config
+  (setq consult-narrow-key "<"
+        consult-preview-key '(:debounce 0.2 any)))
+
+;;; Projects
+
+(use-package project
+  :straight nil
+  :bind-keymap ("C-c p" . project-prefix-map))
+
+(with-eval-after-load 'project
+  (add-to-list 'project-vc-extra-root-markers "Cargo.toml"))
+
+;;; Git
+
+(use-package magit
+  :bind (("C-x g" . magit-status)
+         ("C-x M-g" . magit-dispatch)
+         ("C-c g" . magit-file-dispatch))
+  :config
+  (defun gcca/git-commit-default-message ()
+    "Pre-fill empty commit buffer with timestamp `date +%Y%m%d%H%M%S'.
+Does not auto-commit; opens the normal Magit COMMIT_EDITMSG buffer so the
+message can be edited, then confirmed with C-c C-c.
+
+`git-commit-setup' clears `buffer-modified-p' after this hook.  If we only
+insert into the buffer, a bare C-c C-c (no further typing) makes
+`with-editor-finish' skip writing the file, so Git still sees its empty
+template and aborts with \"empty commit message\".  Write the file so the
+default message is on disk even when the buffer looks unmodified."
+    (save-excursion
+      (goto-char (point-min))
+      (let ((msg-end (save-excursion
+                       (if (re-search-forward "^#" nil t)
+                           (match-beginning 0)
+                         (point-max)))))
+        (when (string-match-p "\\`[[:space:]]*\\'"
+                              (buffer-substring-no-properties (point-min) msg-end))
+          (goto-char (point-min))
+          (insert (format-time-string "%Y%m%d%H%M%S") "\n")
+          (when buffer-file-name
+            (write-region nil nil buffer-file-name nil 'silent))))))
+  (add-hook 'git-commit-setup-hook #'gcca/git-commit-default-message))
+
+;;; Help
+
+(use-package which-key
+  :straight nil
+  :demand t
+  :init (which-key-mode))
+
+;;; Diagnostics
+
+(use-package sideline
+  :hook (flymake-mode . sideline-mode)
+  :init
+  (setq sideline-backends-right '(sideline-flymake)
+        sideline-delay 0.2))
+
+(use-package sideline-flymake
+  :after sideline)
+
+;;; Startup finalize
+
+;; Restore GC settings raised in early-init.el once idle after startup, so the
+;; reset never forces a collection during the final steps of startup.
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (run-with-idle-timer
+             1 nil
+             (lambda ()
+               (setq gc-cons-threshold (* 16 1024 1024)
+                     gc-cons-percentage 0.1)))))
+
+;;; Custom file
+
+;; Keep Customize's auto-generated `custom-set-variables'/`custom-set-faces'
+;; out of init.el so it never rewrites this hand-maintained file.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file nil 'nomessage))

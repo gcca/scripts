@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-json
+      - id: pretty-format-json
+        exclude: ^nvim/coc-settings\.json$
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: fish-indent
+        name: fish-indent
+        entry: fish_indent -w
+        language: system
+        types: [fish]
