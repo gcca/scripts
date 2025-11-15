@@ -1,0 +1,41 @@
+[alias]
+	st = status
+	co = checkout
+	ci = commit
+	br = branch
+	pl = pull
+	ph = push
+[pull]
+	rebase = true
+[commit]
+	gpgsign = true
+	verbose = true
+[gpg]
+	program = gpg
+[core]
+	pager = delta --side-by-side
+	editor = nvim
+[init]
+	defaultBranch = master
+[rerere]
+	enabled = true
+	autoupdate = true
+[advice]
+	mergeConflict = false
+[diff]
+	algorithm = histogram
+	colorMoved = plain
+	mnemonicPrefix = true
+[column]
+	ui = auto
+[branch]
+	sort = -committerdate
+[tag]
+	sort = -version:refname
+[push]
+	autoSetupRemote = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

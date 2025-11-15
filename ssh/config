@@ -1,0 +1,14 @@
+Host gh-gcca
+  HostName github.com
+  IdentityFile ~/.ssh/id_ed25519
+
+Host *
+  IdentityFile ~/.ssh/id_ed25519
+  ServerAliveInterval 100
+  ServerAliveCountMax 3
+  TCPKeepAlive yes
+  SendEnv LANG LC_*
+  # Compression yes
+  # ControlMaster auto
+  # ControlPath /Volumes/Shm/%r@%h:%p
+  # ControlPersist 10m
