@@ -1,0 +1,41 @@
+{
+  "clangd.path": "~/.config/coc/extensions/coc-clangd-data/install/21.1.0/clangd_21.1.0/bin/clangd",
+  "colors.enable": true,
+  "diagnostic.errorSign": "",
+  "diagnostic.hintSign": "󰌵",
+  "diagnostic.infoSign": "󰋼",
+  "diagnostic.warningSign": "",
+  "inlayHint.enable": false,
+  "Lua.diagnostics.globals": [
+    "vim",
+    "NONE",
+    "Snacks"
+  ],
+  "pyright.organizeimports.provider": "isort",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.extraPaths": [
+    "~/src/jobleap-sdk_DISABLED"
+  ],
+  "python.formatting.blackArgs": [
+    "--line-length",
+    "80"
+  ],
+  "python.formatting.provider": "black",
+  "python.linting.pylintArgs": [
+    "--ignore-patterns=tests/.*,test_.*\\.py,.*_test\\.py",
+    "--function-naming-style=any",
+    "--method-naming-style=any",
+    "--prefer-stubs=y",
+    "--disable=broad-exception-caught,no-member,too-few-public-methods,too-many-ancestors",
+    "--min-public-methods=1",
+    "--init-hook=import sys; sys.path.insert(0, '/Users/gcca/Developer/campaign-publisher-jobs-etl-silver-pipeline/src')"
+  ],
+  "python.linting.pylintEnabled": true,
+  "python.pythonPath": "~/Developer/e/DSP-619/bin/python",
+  "python.sortImports.args": [
+    "--profile",
+    "black",
+    "--line-length",
+    "80"
+  ]
+}

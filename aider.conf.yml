@@ -1,0 +1,4 @@
+model: xai/grok-code-fast-1
+auto-commits: false
+watch-files: true
+yes-always: true
