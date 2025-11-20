@@ -3,7 +3,7 @@ function cp-signin -d "Sign in to Control Plane"
   if not command -q http
     source ~/Developer/e/13/bin/activate.fish
   end
-  if set -q _flag_p
+  if set -q _flag_s
     set -g CP_URL $CP_BASE_URL_PROD
   else
     set -g CP_URL $CP_BASE_URL_STAGING

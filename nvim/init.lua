@@ -1423,7 +1423,7 @@ require("lazy").setup({
                             enabled = function()
                                 return Snacks.git.get_root() ~= nil
                             end,
-                            cmd = "git --no-pager diff --stat -B -M -C origin/master...",
+                            cmd = "git --no-pager diff --stat -B -M -C",
                             height = 5,
                             ttl = 5 * 60,
                             indent = 2,
