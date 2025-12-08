@@ -3,7 +3,7 @@ Host gh-gcca
   IdentityFile ~/.ssh/id_ed25519
 
 Host *
-  IdentityFile ~/.ssh/id_rsa
+  IdentityFile ~/.ssh/id_ed25519
   ServerAliveInterval 100
   ServerAliveCountMax 3
   TCPKeepAlive yes

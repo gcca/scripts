@@ -47,7 +47,10 @@ if status is-interactive
     #: }}} fzf
 
     #: {{{ fzf-git
-    source ~/.config/fzf/fzf-git.sh/fzf-git.fish
+    set -l fzf_git_path ~/.config/fzf/fzf-git/fzf-git.fish
+    if test -f $fzf_git_path
+        source $fzf_git_path
+    end
     #: }}} fzf-git
 end
 # vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:

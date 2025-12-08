@@ -1,5 +1,5 @@
 function py-venv -d "Create to a python version" -a envname
-    python3.13 -mvenv ~/Developer/e/$envname
+    python3.14 -mvenv ~/Developer/e/$envname
 end
 
 complete -c py-env -f
