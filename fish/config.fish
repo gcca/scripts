@@ -1,6 +1,9 @@
 if status is-interactive
     set -x NODE_OPTIONS "--localstorage-file=$HOME/.coc-localstorage.db"
 
+    set --export BUN_INSTALL "$HOME/.bun"
+    set --export PATH $BUN_INSTALL/bin $PATH
+
     #: {{{ gcca
     if test (uname) = Darwin
         eval (/opt/homebrew/bin/brew shellenv)
