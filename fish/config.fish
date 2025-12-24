@@ -6,7 +6,11 @@ if status is-interactive
 
     #: {{{ gcca
     if test (uname) = Darwin
-        eval (/opt/homebrew/bin/brew shellenv)
+        if test -d ~/.hb
+            eval (~/.hb/bin/brew shellenv)
+        else
+            eval (/opt/homebrew/bin/brew shellenv)
+        end
     else
         eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
     end
