@@ -14,6 +14,7 @@ if status is-interactive
     else
         eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
     end
+
     bind ¬ clear-screen
     set K /Volumes/KINGSTON
     set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
@@ -23,6 +24,10 @@ if status is-interactive
     if test -f $setxs_path
         source $setxs_path
     end
+
+    set -x LANG en_US.UTF-8
+    set -x LC_ALL en_US.UTF-8
+    set -x LC_CTYPE en_US.UTF-8
     #: }}} gcca
 
     #: {{{ Eza
