@@ -4,6 +4,9 @@ if status is-interactive
     set --export BUN_INSTALL "$HOME/.bun"
     set --export PATH $BUN_INSTALL/bin $PATH
 
+    set -x __GLX_VENDOR_LIBRARY_NAME nvidia
+    set -x __NV_PRIME_RENDER_OFFLOAD 1
+
     #: {{{ gcca
     if test (uname) = Darwin
         if test -d ~/.hb
