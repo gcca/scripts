@@ -23,11 +23,11 @@ function g-tmux -d "Starts tmux with 4 windows for a project and its Python envi
     tmux send-keys -t $SESSION:0 "py-env $env" C-m
     tmux send-keys -t $SESSION:0 clear C-m
 
-    tmux new-window -t $SESSION -n srv
+    tmux new-window -t $SESSION -n sv
     tmux send-keys -t $SESSION:1 "dev-go $project" C-m
     tmux send-keys -t $SESSION:1 "py-env $env" C-m
 
-    tmux new-window -t $SESSION -n cli
+    tmux new-window -t $SESSION -n ag
     tmux send-keys -t $SESSION:2 "dev-go $project" C-m
     tmux send-keys -t $SESSION:2 "py-env $env" C-m
     tmux send-keys -t $SESSION:2 clear C-m
