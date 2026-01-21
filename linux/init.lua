@@ -1694,33 +1694,33 @@ vim.o.wrap = true
 vim.keymap.set('n', 'U', ':redo<CR>')
 --: }}} Configuración básica
 
---: {{{ Keymaps
-local copts = { noremap = true, silent = true }
-local nopts = { noremap = false, silent = true }
-vim.keymap.set('i', '<C-g>', '<Esc>:w<CR>', nopts)
-vim.keymap.set('n', '<C-g>', ':w<CR>', nopts)
-vim.keymap.set('n', '<C-k>', ':bprevious<CR>', copts)
-vim.keymap.set('n', '<C-l>', ':bnext<CR>', copts)
---vim.keymap.set('n', '<C-j>', ':Bwipeout<CR>', copts)
-vim.keymap.set('n', '<C-j>', ':silent! bp<bar>vsp<bar>silent! bn<bar>bd<CR>', copts)
-
-vim.keymap.set('n', '<C-p>', function() Snacks.picker.files() end, copts)
-
-if vim.loop.os_uname().sysname == 'Darwin' then
-    vim.keymap.set('i', '©', '<Esc>:w!<CR>')
-    vim.keymap.set('n', '©', ':w!<CR>')
-
-    vim.keymap.set('n', '∑', '<C-w>')
-    vim.keymap.set('i', '∑', '<C-w>')
-    vim.keymap.set('c', '∑', '<C-w>')
-
-    vim.keymap.set('n', '˚', ':bprevious<CR>')
-    vim.keymap.set('n', '¬', ':bnext<CR>')
-    vim.keymap.set('n', '∆', ':bp|bd #<CR>')
-
-    vim.keymap.set('n', 'π', "<leader>ff")
-end
---: }}} Keymaps
+-- --: {{{ Keymaps
+-- local copts = { noremap = true, silent = true }
+-- local nopts = { noremap = false, silent = true }
+-- vim.keymap.set('i', '<C-g>', '<Esc>:w<CR>', nopts)
+-- vim.keymap.set('n', '<C-g>', ':w<CR>', nopts)
+-- vim.keymap.set('n', '<C-k>', ':bprevious<CR>', copts)
+-- vim.keymap.set('n', '<C-l>', ':bnext<CR>', copts)
+-- --vim.keymap.set('n', '<C-j>', ':Bwipeout<CR>', copts)
+-- vim.keymap.set('n', '<C-j>', ':silent! bp<bar>vsp<bar>silent! bn<bar>bd<CR>', copts)
+--
+-- vim.keymap.set('n', '<C-p>', function() Snacks.picker.files() end, copts)
+--
+-- if vim.loop.os_uname().sysname == 'Darwin' then
+--     vim.keymap.set('i', '©', '<Esc>:w!<CR>')
+--     vim.keymap.set('n', '©', ':w!<CR>')
+--
+--     vim.keymap.set('n', '∑', '<C-w>')
+--     vim.keymap.set('i', '∑', '<C-w>')
+--     vim.keymap.set('c', '∑', '<C-w>')
+--
+--     vim.keymap.set('n', '˚', ':bprevious<CR>')
+--     vim.keymap.set('n', '¬', ':bnext<CR>')
+--     vim.keymap.set('n', '∆', ':bp|bd #<CR>')
+--
+--     vim.keymap.set('n', 'π', "<leader>ff")
+-- end
+-- --: }}} Keymaps
 
 --: {{{ Colors
 vim.o.termguicolors = true
@@ -1728,5 +1728,7 @@ vim.o.termguicolors = true
 --vim.o.t_8f = "\27[38;2;%lu;%lu;%lum"
 --vim.o.t_8b = "\27[48;2;%lu;%lu;%lum"
 --: }}} Colors
+
+vim.g.lazyvim_check_order = false
 
 -- vim: set ts=4 sw=4 sts=4 et ft=lua fdm=marker:

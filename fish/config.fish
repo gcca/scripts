@@ -22,7 +22,6 @@ if status is-interactive
     set K /Volumes/KINGSTON
     set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
     fish_add_path $HOME/.local/bin
-    fish_config theme choose tokyonight
     set -l setxs_path (dirname (status filename))/setxs.fish
     if test -f $setxs_path
         source $setxs_path
