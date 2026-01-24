@@ -1,12 +1,4 @@
 if status is-interactive
-    set -x NODE_OPTIONS "--localstorage-file=$HOME/.coc-localstorage.db"
-
-    set --export BUN_INSTALL "$HOME/.bun"
-    set --export PATH $BUN_INSTALL/bin $PATH
-
-    set -x __GLX_VENDOR_LIBRARY_NAME nvidia
-    set -x __NV_PRIME_RENDER_OFFLOAD 1
-
     #: {{{ gcca
     if test (uname) = Darwin
         if test -d ~/.hb
@@ -19,18 +11,27 @@ if status is-interactive
     end
 
     bind ¬ clear-screen
-    set K /Volumes/KINGSTON
+    set K /Volumes/KINGSTON_gcca
     set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
-    fish_add_path $HOME/.local/bin
+    fish_config theme choose tokyonight
     set -l setxs_path (dirname (status filename))/setxs.fish
     if test -f $setxs_path
         source $setxs_path
     end
+    #: }}} gcca
 
+    #: {{{ Env&Vars
     set -x LANG en_US.UTF-8
     set -x LC_ALL en_US.UTF-8
     set -x LC_CTYPE en_US.UTF-8
-    #: }}} gcca
+
+    set -x NODE_OPTIONS "--localstorage-file=$HOME/.coc-localstorage.db"
+
+    set -x BUN_INSTALL "$HOME/.bun"
+
+    fish_add_path $HOME/.local/bin
+    fish_add_path $BUN_INSTALL/bin
+    #: }}} Env&Vars
 
     #: {{{ Eza
     alias ls='eza --color=always --color-scale=all --color-scale-mode=gradient --icons=always --group-directories-first'
