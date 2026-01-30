@@ -718,7 +718,7 @@ require("lazy").setup({
         {
             "neoclide/coc.nvim",
             config = function()
-                vim.opt.updatetime = 1600
+                vim.opt.updatetime = 10000
                 local keyset = vim.keymap.set
 
                 vim.g.coc_global_extensions = {
@@ -1398,7 +1398,7 @@ require("lazy").setup({
             priority = 1000,
             lazy = false,
             opts = {
-                bigfile = { enabled = true },
+                bigfile = { enabled = false },
                 dashboard = {
                     enabled = true,
                     sections = {
@@ -1431,7 +1431,7 @@ require("lazy").setup({
                         { section = "startup" },
                     },
                 },
-                explorer = { enabled = true },
+                explorer = { enabled = false },
                 indent = {
                     enabled = true,
                     indent = {
@@ -1440,7 +1440,7 @@ require("lazy").setup({
                     },
                 },
                 input = {
-                    enabled = true,
+                    enabled = false,
                     icon = " ",
                     icon_hl = "SnacksInputIcon",
                     icon_pos = "left",
@@ -1449,7 +1449,7 @@ require("lazy").setup({
                     expand = true,
                 },
                 picker = {
-                    enabled = true,
+                    enabled = false,
                     sources = {
                         files = {
                             hidden = true,
@@ -1457,19 +1457,19 @@ require("lazy").setup({
                         },
                     },
                 },
-                notifier = { enabled = true },
-                quickfile = { enabled = true },
-                scope = { enabled = true },
+                notifier = { enabled = false },
+                quickfile = { enabled = false },
+                scope = { enabled = false },
                 scroll = { enabled = false },
                 statuscolumn = {
-                    enabled = true,
+                    enabled = false,
                     folds = {
                         open = true,
                         git_hl = true,
                     },
                 },
-                words = { enabled = true },
-                lazygit = { enabled = true },
+                words = { enabled = false },
+                lazygit = { enabled = false },
             },
             keys = {
                 -- Top Pickers & Explorer
@@ -1635,8 +1635,8 @@ vim.o.foldcolumn = '3'
 vim.o.signcolumn = 'yes:3'
 vim.o.numberwidth = 5
 
-vim.o.foldenable = true
-vim.o.foldmethod = 'expr'
+-- vim.o.foldenable = true
+-- vim.o.foldmethod = 'expr'
 
 vim.o.laststatus = 3
 
@@ -1678,7 +1678,7 @@ vim.o.incsearch = true
 
 -- expresión regular y coincidencia
 vim.o.magic = true
-vim.o.showmatch = true
+vim.o.showmatch = false
 
 -- tabulación e indentación
 vim.o.expandtab = true
