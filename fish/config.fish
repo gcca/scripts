@@ -13,7 +13,12 @@ if status is-interactive
     bind ¬ clear-screen
     set K /Volumes/KINGSTON_gcca
     set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
-    fish_config theme choose tokyonight
+
+    fish_add_path $HOME/.local/bin
+    fish_add_path /Users/gcca/.opencode/bin
+
+    #fish_config theme choose tokyonight
+
     set -l setxs_path (dirname (status filename))/setxs.fish
     if test -f $setxs_path
         source $setxs_path
@@ -69,3 +74,5 @@ if status is-interactive
     #: }}} fzf-git
 end
 # vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
+
+# opencode
