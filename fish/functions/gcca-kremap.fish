@@ -1,17 +1,17 @@
 function gcca-kremap
     set -l option $argv[1]
     switch $option
-        case ctrlcmd
+        case 'ctrlcmd'
             _gcca-kremap-keymap 0x7000000E0 0x7000000E7
-        case cmdctrl
+        case 'cmdctrl'
             _gcca-kremap-unmap 0x7000000E7
-        case ctrlopt
+        case 'ctrlopt'
             _gcca-kremap-keymap 0x7000000E0 0x7000000E6
-        case ctrldel
+        case 'ctrldel'
             _gcca-kremap-keymap 0x7000000E0 0x70000004C
-        case tildel
+        case 'tildel'
             _gcca-kremap-keymap 0x700000035 0x70000004C
-        case reset
+        case 'reset'
             _gcca-kremap-reset
     end
     _gcca-kremap-refresh
