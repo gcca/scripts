@@ -613,6 +613,7 @@ require("lazy").setup({
         --: {{{ Aerial
         {
             'stevearc/aerial.nvim',
+            lazy = true,
             opts = {},
             dependencies = {
                 {
@@ -717,6 +718,7 @@ require("lazy").setup({
         --: {{{ CoC
         {
             "neoclide/coc.nvim",
+            lazy = true,
             config = function()
                 vim.opt.updatetime = 10000
                 local keyset = vim.keymap.set
