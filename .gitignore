@@ -2,3 +2,4 @@ __pycache__
 .aider*
 .grok/
 GROK.md
+.DS_Store
