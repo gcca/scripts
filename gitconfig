@@ -41,6 +41,6 @@
 	required = true
 [delta]
   features = side-by-side navigate
-  syntax-theme = "Sublime Snazzy"
+  syntax-theme = "Github"
 [include]
 	path = ~/.config/delta/themes.gitconfig

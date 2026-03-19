@@ -1,4 +1,8 @@
-function kitty-scolours
+function kitty-scolours -d "Set kitty status colours"
+    if test (count $argv) -lt 2
+        echo (set_color red)"Usage: kitty-scolours <fg_hex> <bg_hex>"(set_color normal)
+        return 1
+    end
     set -l bg "#$argv[2]"
     set -l fg "#$argv[1]"
     printf %s\n \
