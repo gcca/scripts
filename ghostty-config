@@ -2,7 +2,7 @@
 
 command = /opt/homebrew/bin/fish -l
 
-theme = light:Ayu Light,dark:Ayu Mirage
+theme = light:Rose Pine Dawn,dark:Rose Pine Moon
 
 cursor-style               = block
 cursor-style-blink         = true

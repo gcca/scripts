@@ -52,7 +52,7 @@ if status is-interactive
     #: }}} Eza
 
     #: {{{ Bat
-    # set -x BAT_THEME gruvbox-dark
+    set -x BAT_THEME OneHalfLight
     set -x BAT_STYLE 'numbers,changes,header'
     alias cat='bat'
     #: }}} Bat

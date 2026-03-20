@@ -11,6 +11,7 @@ return {
   { "folke/tokyonight.nvim",      lazy = true },
   { "kepano/flexoki-neovim",      lazy = true },
   { "Shatur/neovim-ayu",          lazy = true },
+  { "rose-pine/neovim",           lazy = true, name = "rose-pine" },
   (function()
     local model   = vim.trim(vim.fn.system("sysctl -n hw.model"))
 
@@ -21,13 +22,17 @@ return {
 
     if model == "Mac14,5" then
       return {
-        "Shatur/neovim-ayu",
+        "rose-pine/neovim",
         lazy = false,
         priority = 1000,
         opts = {},
         config = function()
           vim.o.background = is_dark and 'dark' or 'light'
-          vim.cmd.colorscheme("ayu")
+          require 'rose-pine'.setup({
+            variant = 'dawn',
+            dark_variant = 'moon',
+          })
+          vim.cmd.colorscheme("rose-pine")
         end,
       }
     elseif model == "Mac16,9" then

@@ -40,7 +40,6 @@
 	process = git-lfs filter-process
 	required = true
 [delta]
-  features = side-by-side navigate
-  syntax-theme = "Github"
+  features = side-by-side navigate mirthful-willow
 [include]
 	path = ~/.config/delta/themes.gitconfig
