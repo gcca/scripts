@@ -17,7 +17,7 @@ return {
     local current = os.date('*t')
     local hour    = current.hour
     local min     = current.min
-    local is_dark = (hour > 18 or (hour == 18 and min >= 30)) or (hour < 6 or (hour == 6 and min < 0))
+    local is_dark = (hour > 18 or (hour == 18 and min >= 30)) or (hour < 6 or (hour == 6 and min < 30))
 
     if model == "Mac14,5" then
       return {
@@ -38,7 +38,7 @@ return {
         opts = {},
         config = function()
           if is_dark then
-            vim.cmd.colorscheme("tokyonight-moon")
+            vim.cmd.colorscheme("ayu-mirage")
           else
             vim.cmd.colorscheme("ayu-light")
           end

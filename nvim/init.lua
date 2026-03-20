@@ -1003,7 +1003,7 @@ require("lazy").setup({
             "mason-org/mason-lspconfig.nvim",
             event = "VeryLazy",
             opts = {
-                ensure_installed = { "lua_ls", "pyright", "clangd", "jsonls" },
+                ensure_installed = { "lua_ls", "pyright", "clangd", "jsonls", "taplo" },
             },
             dependencies = {
                 { "mason-org/mason.nvim", opts = {} },
