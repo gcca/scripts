@@ -37,16 +37,17 @@ return {
       }
     elseif model == "Mac16,9" then
       return {
-        "folke/tokyonight.nvim",
+        "rose-pine/neovim",
         lazy = false,
         priority = 1000,
         opts = {},
         config = function()
-          if is_dark then
-            vim.cmd.colorscheme("ayu-mirage")
-          else
-            vim.cmd.colorscheme("ayu-light")
-          end
+          vim.o.background = is_dark and 'dark' or 'light'
+          require 'rose-pine'.setup({
+            variant = 'dawn',
+            dark_variant = 'moon',
+          })
+          vim.cmd.colorscheme("rose-pine")
         end,
       }
     else
