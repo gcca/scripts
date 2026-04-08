@@ -17,10 +17,12 @@ end
 vim.opt.rtp:prepend(lazypath)
 --: }}} Lazy
 
+--: {{{ AutoCmd
+
 -- vim.g.mapleader = " "
 -- vim.g.maplocalleader = "\\"
+vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin:" .. vim.env.PATH
 
---: {{{ AutoCmd
 -- vim.api.nvim_create_autocmd("ColorScheme", {
 --     callback = function()
 --         vim.cmd [[hi SignColumn guibg=NONE]]
@@ -185,15 +187,36 @@ vim.diagnostic.config({
 --: }}} Diagnostic signs
 
 --: {{{ LSP configs
+-- local lsp_no_check = { sourcekit = true }
+-- local function lsp_enable(servers)
+--     local available = vim.tbl_filter(function(name)
+--         if lsp_no_check[name] then return true end
+--         local cfg = vim.lsp.config[name]
+--         local cmd = cfg and cfg.cmd and cfg.cmd[1]
+--         if not cmd then return true end
+--         if vim.fn.executable(cmd) == 1 then return true end
+--         vim.notify("LSP '" .. name .. "': binary not found (" .. cmd .. ")", vim.log.levels.WARN)
+--         return false
+--     end, servers)
+--     vim.lsp.enable(available)
+-- end
+
+
 vim.lsp.config("lua_ls", {
+    cmd = { "lua-language-server" },
+    filetypes = { "lua" },
     settings = {
         Lua = {
             diagnostics = { globals = { "vim", "NONE", "Snacks" } },
+            format = { enable = true },
         },
     },
 })
 
 vim.lsp.config("pyright", {
+    cmd = { "pyright-langserver", "--stdio" },
+    filetypes = { "python" },
+    root_markers = { "pyproject.toml", "setup.py", "setup.cfg", "pyrightconfig.json" },
     settings = {
         python = {
             analysis = {
@@ -216,7 +239,22 @@ vim.lsp.config("sourcekit", {
     filetypes = { "swift" },
 })
 
-vim.lsp.enable({ "lua_ls", "pyright", "clangd", "sourcekit" })
+vim.lsp.config("jsonls", {
+    cmd = { "vscode-json-language-server", "--stdio" },
+    filetypes = { "json", "jsonc" },
+    settings = {
+        json = {
+            validate = { enable = true },
+        },
+    },
+})
+
+vim.lsp.config("taplo", {
+    cmd = { "taplo", "lsp", "stdio" },
+    filetypes = { "toml" },
+})
+
+vim.lsp.enable({ "lua_ls", "pyright", "clangd", "sourcekit", "jsonls", "taplo" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(args)
@@ -1008,7 +1046,6 @@ require("lazy").setup({
             },
             dependencies = {
                 { "mason-org/mason.nvim", opts = {} },
-                "neovim/nvim-lspconfig",
             },
         },
         --: }}} Mason
