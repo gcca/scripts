@@ -17,7 +17,11 @@ if status is-interactive
     fish_add_path $HOME/.local/bin
     fish_add_path /Users/gcca/.opencode/bin
 
-    #fish_config theme choose tokyonight
+    if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
+        fish_config theme choose AtomOneLight
+    else
+        fish_config theme choose tokyonight
+    end
 
     if set -q HOMEBREW_PREFIX; and test -x $HOMEBREW_PREFIX/bin/starship
         source ($HOMEBREW_PREFIX/bin/starship init fish --print-full-init | psub)

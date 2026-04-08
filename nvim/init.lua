@@ -197,7 +197,7 @@ vim.lsp.config("pyright", {
     settings = {
         python = {
             analysis = {
-                typeCheckingMode = "basic",
+                typeCheckingMode = "standard",
             },
         },
     },
@@ -205,6 +205,7 @@ vim.lsp.config("pyright", {
 
 vim.lsp.config("clangd", {
     cmd = { "clangd", "--background-index", "--clang-tidy" },
+    filetypes = { "c", "cpp", "objc", "objcpp" },
     init_options = {
         fallbackFlags = { "-std=c++23" },
     },
@@ -214,7 +215,8 @@ vim.lsp.config("sourcekit", {
     cmd = { "sourcekit-lsp" },
     filetypes = { "swift" },
 })
-vim.lsp.enable("sourcekit")
+
+vim.lsp.enable({ "lua_ls", "pyright", "clangd", "sourcekit" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(args)

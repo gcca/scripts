@@ -11,7 +11,7 @@
   "mode": {
     "build": {
       "description": "Build agent: Grok Code Fast",
-      "model": "xai/grok-4-1-fast",
+      "model": "xai/grok-code-fast-1",
       "temperature": 0.5
     },
     "plan": {
