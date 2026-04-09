@@ -4,7 +4,7 @@ command = /opt/homebrew/bin/fish -l
 
 theme = light:Monokai Pro Octagon,dark:Matte Black
 
-scrollback-limit = 2500
+scrollback-limit = 500
 
 cursor-style               = block
 cursor-style-blink         = true
