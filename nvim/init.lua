@@ -1262,7 +1262,7 @@ require("lazy").setup({
             },
             opts = {
                 dashboard = {
-                    enabled = true,
+                    enabled = vim.fn.argc() == 0,
                     sections = {
                         { section = "header" },
                         { section = "keys",   gap = 1, padding = 2 },
@@ -1562,20 +1562,20 @@ vim.keymap.set('n', '<C-j>', ':silent! bp<bar>vsp<bar>silent! bn<bar>bd<CR>', co
 
 vim.keymap.set('n', '<C-p>', function() Snacks.picker.files() end, copts)
 
-if vim.loop.os_uname().sysname == 'Darwin' then
-    vim.keymap.set('i', '©', '<Esc>:w!<CR>')
-    vim.keymap.set('n', '©', ':w!<CR>')
-
-    vim.keymap.set('n', '∑', '<C-w>')
-    vim.keymap.set('i', '∑', '<C-w>')
-    vim.keymap.set('c', '∑', '<C-w>')
-
-    vim.keymap.set('n', '˚', ':bprevious<CR>')
-    vim.keymap.set('n', '¬', ':bnext<CR>')
-    vim.keymap.set('n', '∆', ':bp|bd #<CR>')
-
-    vim.keymap.set('n', 'π', "<leader>ff")
-end
+-- if vim.fn.has("mac") == 1 then
+--     vim.keymap.set('i', '©', '<Esc>:w!<CR>')
+--     vim.keymap.set('n', '©', ':w!<CR>')
+--
+--     vim.keymap.set('n', '∑', '<C-w>')
+--     vim.keymap.set('i', '∑', '<C-w>')
+--     vim.keymap.set('c', '∑', '<C-w>')
+--
+--     vim.keymap.set('n', '˚', ':bprevious<CR>')
+--     vim.keymap.set('n', '¬', ':bnext<CR>')
+--     vim.keymap.set('n', '∆', ':bp|bd #<CR>')
+--
+--     vim.keymap.set('n', 'π', "<leader>ff")
+-- end
 --: }}} Keymaps
 
 --: {{{ Colors
