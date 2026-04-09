@@ -12,7 +12,25 @@ return {
   { "kepano/flexoki-neovim",      lazy = true },
   { "Shatur/neovim-ayu",          lazy = true },
   (function()
-    local model   = vim.trim(vim.fn.system("sysctl -n hw.model"))
+    local cache_file = vim.fn.stdpath("cache") .. "/hw_model"
+    local model
+    local stat = vim.uv.fs_stat(cache_file)
+    if stat then
+        local fd = vim.uv.fs_open(cache_file, "r", 438)
+        if fd then
+            local data = vim.uv.fs_read(fd, stat.size, 0)
+            vim.uv.fs_close(fd)
+            model = data and vim.trim(data) or ""
+        end
+    end
+    if not model or model == "" then
+        model = vim.trim(vim.fn.system("sysctl -n hw.model"))
+        local fd = vim.uv.fs_open(cache_file, "w", 438)
+        if fd then
+            vim.uv.fs_write(fd, model, 0)
+            vim.uv.fs_close(fd)
+        end
+    end
 
     local current = os.date('*t')
     local hour    = current.hour

@@ -1505,7 +1505,7 @@ vim.o.encoding = 'utf-8'
 
 --: {{{ backup, swap y undo
 ; (function()
-    if vim.fn.isdirectory('/Volumes/Shm') == 1 then
+    if vim.uv.fs_stat('/Volumes/Shm') then
         vim.o.backupdir = '/Volumes/Shm/local_state/backup/'
         vim.o.directory = '/Volumes/Shm/local_state/swap/'
         vim.o.undodir = '/Volumes/Shm/local_state/undo/'
