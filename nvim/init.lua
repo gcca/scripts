@@ -205,6 +205,7 @@ vim.diagnostic.config({
 vim.lsp.config("lua_ls", {
     cmd = { "lua-language-server" },
     filetypes = { "lua" },
+    root_markers = { ".luarc.json", ".luarc.jsonc", ".git" },
     settings = {
         Lua = {
             diagnostics = { globals = { "vim", "NONE", "Snacks" } },
@@ -229,6 +230,7 @@ vim.lsp.config("pyright", {
 vim.lsp.config("clangd", {
     cmd = { "clangd", "--background-index", "--clang-tidy" },
     filetypes = { "c", "cpp", "objc", "objcpp" },
+    root_markers = { "compile_commands.json", "CMakeLists.txt", ".git" },
     init_options = {
         fallbackFlags = { "-std=c++23" },
     },
@@ -237,6 +239,7 @@ vim.lsp.config("clangd", {
 vim.lsp.config("sourcekit", {
     cmd = { "sourcekit-lsp" },
     filetypes = { "swift" },
+    root_markers = { "Package.swift", ".git" },
 })
 
 vim.lsp.config("jsonls", {
@@ -252,9 +255,81 @@ vim.lsp.config("jsonls", {
 vim.lsp.config("taplo", {
     cmd = { "taplo", "lsp", "stdio" },
     filetypes = { "toml" },
+    root_markers = { "Cargo.toml", ".git" },
 })
 
-vim.lsp.enable({ "lua_ls", "pyright", "clangd", "sourcekit", "jsonls", "taplo" })
+vim.lsp.config("fish_lsp", {
+    cmd = { "fish-lsp", "start" },
+    filetypes = { "fish" },
+    root_markers = { ".git" },
+})
+
+vim.lsp.config("html", {
+    cmd = { "vscode-html-language-server", "--stdio" },
+    filetypes = { "html" },
+    root_markers = { ".git" },
+    init_options = {
+        provideFormatter = true,
+    },
+})
+
+vim.lsp.config("cssls", {
+    cmd = { "vscode-css-language-server", "--stdio" },
+    filetypes = { "css", "scss", "less" },
+    root_markers = { ".git" },
+    settings = {
+        css = { validate = true },
+        scss = { validate = true },
+        less = { validate = true },
+    },
+})
+
+vim.lsp.config("emmet_language_server", {
+    cmd = { "emmet-language-server", "--stdio" },
+    filetypes = { "html", "css", "scss", "javascript", "javascriptreact", "typescript", "typescriptreact" },
+    root_markers = { ".git" },
+})
+
+vim.lsp.config("gopls", {
+    cmd = { "gopls" },
+    filetypes = { "go", "gomod", "gowork", "gotmpl" },
+    root_markers = { "go.work", "go.mod", ".git" },
+    settings = {
+        gopls = {
+            analyses = { unusedparams = true },
+            staticcheck = true,
+        },
+    },
+})
+
+vim.lsp.config("eslint", {
+    cmd = { "vscode-eslint-language-server", "--stdio" },
+    filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact", "vue" },
+    root_markers = { ".eslintrc", ".eslintrc.js", ".eslintrc.json", ".eslintrc.cjs", "eslint.config.js", ".git" },
+    settings = {
+        validate = "on",
+        format = true,
+        workingDirectory = { mode = "location" },
+    },
+})
+
+vim.lsp.config("yamlls", {
+    cmd = { "yaml-language-server", "--stdio" },
+    filetypes = { "yaml" },
+    root_markers = { ".git" },
+    settings = {
+        yaml = {
+            validate = true,
+            schemaStore = { enable = true, url = "" },
+        },
+    },
+})
+
+vim.lsp.enable({
+    "lua_ls", "pyright", "clangd", "sourcekit", "jsonls", "taplo",
+    "html", "cssls", "emmet_language_server", "gopls", "eslint", "yamlls",
+    "fish_lsp",
+})
 
 vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(args)
@@ -1043,11 +1118,12 @@ require("lazy").setup({
             event = "VeryLazy",
             opts = {
                 ensure_installed = {
-                    "lua_ls", "pyright", "clangd", "jsonls", "taplo", "html", "cssls", "emmet_language_server", "gopls",
-                    "eslint", "yamlls", },
+                    "lua_ls", "pyright", "clangd", "jsonls", "taplo",
+                    "html", "cssls", "emmet_language_server", "gopls", "eslint", "yamlls",
+                },
             },
             dependencies = {
-                { "mason-org/mason.nvim", opts = {} },
+                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp" } } },
             },
         },
         --: }}} Mason
