@@ -20,7 +20,7 @@ if status is-interactive
     if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
         fish_config theme choose AtomOneLight
     else
-        fish_config theme choose tokyonight
+        fish_config theme choose tokyonight_night
     end
 
     if set -q HOMEBREW_PREFIX; and test -x $HOMEBREW_PREFIX/bin/starship
