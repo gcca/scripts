@@ -29,4 +29,4 @@ copy-on-select          = clipboard
 mouse-hide-while-typing = true
 
 desktop-notifications = false
-bell-features = sound,title,attention
+bell-features = audio,title,attention
