@@ -2,7 +2,7 @@
 
 command = /opt/homebrew/bin/fish -l
 
-theme = light:Monokai Pro Octagon,dark:Terafox
+theme = light:Cobalt Next Minimal,dark:Terafox
 
 scrollback-limit = 5000
 

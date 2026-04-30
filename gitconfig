@@ -42,5 +42,10 @@
 [delta]
   features = side-by-side navigate decorations line-numbers dark mantis-shrimp-lite
   true-color = always
+  plus-style = "syntax #012800"
+  minus-style = "syntax #340001"
+  plus-emph-style = "syntax #012800"
+  minus-emph-style = "syntax #340001"
+  zero-style = normal
 [include]
 	path = ~/.config/delta/themes.gitconfig

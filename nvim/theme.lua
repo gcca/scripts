@@ -39,19 +39,17 @@ return {
 
     if model == "Mac14,5" then
       return {
-        "rose-pine/neovim",
+        "EdeanEast/nightfox.nvim",
         lazy = false,
         priority = 1000,
         opts = {},
         config = function()
+          vim.o.background = 'dark'
           if is_dark then
-            vim.o.background = 'dark'
             require 'rose-pine'.setup({ variant = 'main' })
             vim.cmd.colorscheme("rose-pine-main")
           else
-            vim.o.background = 'light'
-            require 'rose-pine'.setup({ variant = 'moon' })
-            vim.cmd.colorscheme("rose-pine-moon")
+            vim.cmd.colorscheme("terafox")
           end
         end,
       }
