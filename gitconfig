@@ -40,6 +40,7 @@
 	process = git-lfs filter-process
 	required = true
 [delta]
-  features = side-by-side navigate mirthful-willow
+  features = side-by-side navigate decorations line-numbers dark mantis-shrimp-lite
+  true-color = always
 [include]
 	path = ~/.config/delta/themes.gitconfig

@@ -10,19 +10,29 @@
     "chrome-devtools": {
       "enabled": false,
       "type": "local",
-      "command": ["npx", "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browserUrl=http://100.91.191.102:9222"]
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--no-usage-statistics",
+        "--browserUrl=http://100.91.191.102:9222"
+      ]
     }
   },
   "mode": {
     "build": {
       "description": "Build agent: Grok Code Fast",
       "model": "xai/grok-code-fast-1",
-      "temperature": 0.5
+      "temperature": 0.5,
+      "options": {},
+      "permission": {}
     },
     "plan": {
       "description": "Plan agent: Grok 4.1 Fast",
       "model": "xai/grok-code-fast-1",
-      "temperature": 0.3
+      "temperature": 0.3,
+      "options": {},
+      "permission": {}
     }
   },
   "model": "xai/grok-code-fast-1",
