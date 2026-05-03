@@ -21,16 +21,16 @@
   },
   "mode": {
     "build": {
-      "description": "Build agent: Grok Code Fast",
-      "model": "xai/grok-code-fast-1",
+      "description": "Grok 4.1 Fast Non-Reasoning",
+      "model": "xai/grok-4-1-fast-non-reasoning",
       "temperature": 0.5,
       "options": {},
       "permission": {}
     },
     "plan": {
-      "description": "Plan agent: Grok 4.1 Fast",
-      "model": "xai/grok-code-fast-1",
-      "temperature": 0.3,
+      "description": "Plan agent: Grok 4.3",
+      "model": "xai/grok-4.3",
+      "temperature": 0.2,
       "options": {},
       "permission": {}
     }

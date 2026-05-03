@@ -253,6 +253,7 @@ vim.api.nvim_create_autocmd("User", {
             settings = {
                 json = {
                     validate = { enable = true },
+                    format = { enable = true },
                 },
             },
         })
@@ -1135,11 +1136,11 @@ require("lazy").setup({
             opts = {
                 ensure_installed = {
                     "lua_ls", "pyright", "clangd", "jsonls", "taplo",
-                    "html", "cssls", "emmet_language_server", "gopls", "eslint", "yamlls", "cmake",
+                    "html", "cssls", "emmet_language_server", "gopls", "eslint", "yamlls", "cmake"
                 },
             },
             dependencies = {
-                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp" } } },
+                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp", "clang-format" } } },
             },
         },
         --: }}} Mason
@@ -1313,7 +1314,7 @@ require("lazy").setup({
                     enabled = true,
                     sources = {
                         files = {
-                            -- hidden = true,
+                            hidden = true,
                             -- no_ignore = false,
                             exclude = { ".git", ".cache", "build", "node_modules" },
                         },
