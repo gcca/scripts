@@ -2,7 +2,7 @@
 
 command = /opt/homebrew/bin/fish -l
 
-theme = light:Cobalt Next Minimal,dark:Terafox
+theme = Terafox
 
 scrollback-limit = 5000
 
@@ -10,15 +10,16 @@ cursor-style               = block
 cursor-style-blink         = true
 shell-integration-features = no-title
 
-macos-titlebar-style        = tabs
+macos-titlebar-style        = hidden
 macos-non-native-fullscreen = false
 macos-window-buttons        = visible
 
-window-save-state = never
-window-width      = 90
-window-height     = 25
-window-position-x = 340
-window-position-y = 90
+window-save-state        = never
+window-width             = 90
+window-height            = 25
+window-position-x        = 340
+window-position-y        = 90
+window-inherit-font-size = false
 
 quit-after-last-window-closed = true
 
