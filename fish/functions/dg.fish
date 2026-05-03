@@ -5,7 +5,17 @@ function dg -d "Go to development directory"
    else
        set name $argv[1]
    end
-   cd ~/Developer/$name
+    cd ~/Developer/$name
+
+    if test -f .pdm-python
+        set -l py (cat .pdm-python | string trim)
+        set -l act (dirname $py)/activate.fish
+        if test -f $act
+            source $act
+        end
+    else if test -d ~/Developer/e/13/bin
+        source ~/Developer/e/13/bin/activate.fish
+    end
 end
 
 complete -c dg -f
