@@ -49,7 +49,8 @@ return {
             require 'rose-pine'.setup({ variant = 'main' })
             vim.cmd.colorscheme("rose-pine-main")
           else
-            vim.cmd.colorscheme("terafox")
+            vim.o.background = 'light'
+            require 'gruvbox'.load()
           end
         end,
       }

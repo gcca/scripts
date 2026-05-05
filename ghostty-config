@@ -2,7 +2,7 @@
 
 command = /opt/homebrew/bin/fish -l
 
-theme = Terafox
+theme = light: Gruvbox Light,dark: Terafox
 
 scrollback-limit = 5000
 
