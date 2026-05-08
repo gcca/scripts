@@ -346,6 +346,7 @@ vim.api.nvim_create_autocmd("User", {
             root_markers = { "zls.json", "build.zig", ".git" },
             settings = {
                 zls = {
+                    zig_exe_path = "/opt/homebrew/bin/zig",
                     enable_inlay_hints = true,
                     warn_style = true,
                 },
@@ -1152,7 +1153,7 @@ require("lazy").setup({
                 },
             },
             dependencies = {
-                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp", "clang-format", "zls" } } },
+                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp", "clang-format", "zls@0.15.0" } } },
             },
         },
         --: }}} Mason
