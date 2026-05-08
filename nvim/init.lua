@@ -340,10 +340,22 @@ vim.api.nvim_create_autocmd("User", {
             filetypes = { "cmake" },
         })
 
+        vim.lsp.config("zls", {
+            cmd = { "zls" },
+            filetypes = { "zig", "zir" },
+            root_markers = { "zls.json", "build.zig", ".git" },
+            settings = {
+                zls = {
+                    enable_inlay_hints = true,
+                    warn_style = true,
+                },
+            },
+        })
+
         vim.lsp.enable({
             "lua_ls", "pyright", "clangd", "sourcekit", "jsonls", "taplo",
             "html", "cssls", "emmet_language_server", "gopls", "eslint", "yamlls",
-            "fish_lsp", "cmake",
+            "fish_lsp", "cmake", "zls",
         })
     end,
 })
@@ -1140,7 +1152,7 @@ require("lazy").setup({
                 },
             },
             dependencies = {
-                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp", "clang-format" } } },
+                { "mason-org/mason.nvim", opts = { ensure_installed = { "fish-lsp", "clang-format", "zls" } } },
             },
         },
         --: }}} Mason
