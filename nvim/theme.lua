@@ -11,6 +11,7 @@ return {
   { "folke/tokyonight.nvim",      lazy = true },
   { "kepano/flexoki-neovim",      lazy = true },
   { "Shatur/neovim-ayu",          lazy = true },
+  { "maxmx03/solarized.nvim",     lazy = true },
   (function()
     local cache_file = vim.fn.stdpath("cache") .. "/hw_model"
     local model
@@ -44,13 +45,32 @@ return {
         priority = 1000,
         opts = {},
         config = function()
-          vim.o.background = 'dark'
           if is_dark then
-            require 'rose-pine'.setup({ variant = 'main' })
-            vim.cmd.colorscheme("rose-pine-main")
+            vim.o.background = 'dark'
+            vim.cmd.colorscheme 'terafox'
+            -- require 'rose-pine'.setup({ variant = 'main' })
+            -- vim.cmd.colorscheme("rose-pine-main")
           else
+            local solarized = require('solarized')
+            vim.o.termguicolors = true
             vim.o.background = 'light'
-            require 'gruvbox'.load()
+            solarized.setup({
+              transparent = {
+                enabled = true,
+              },
+              paletter = 'selenized',
+              variant = 'summer',
+              styles = {
+                comments = { italic = true, bold = false },
+                variables = { italic = false },
+                keywords = { italic = true },
+              },
+              error_lens = {
+                text = true,
+                symbol = true,
+              },
+            })
+            vim.cmd.colorscheme 'solarized'
           end
         end,
       }
