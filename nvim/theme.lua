@@ -40,7 +40,7 @@ return {
 
     if model == "Mac14,5" then
       return {
-        "EdeanEast/nightfox.nvim",
+        "maxmx03/solarized.nvim",
         lazy = false,
         priority = 1000,
         opts = {},
@@ -97,7 +97,7 @@ return {
       }
     else
       return {
-        "EdenEast/nightfox.nvim",
+        "maxmx03/solarized.nvim",
         lazy = false,
         priority = 1000,
         opts = {},

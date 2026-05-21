@@ -4,7 +4,7 @@ command = /opt/homebrew/bin/fish -l
 
 theme = light: Violet Light,dark: Terafox
 
-scrollback-limit = 5000
+scrollback-limit = 10000
 
 cursor-style               = block
 cursor-style-blink         = true
@@ -23,7 +23,7 @@ window-inherit-font-size = false
 
 quit-after-last-window-closed = true
 
-font-family  = "Iosevka NFM Light"
+font-family  = "IosevkaTerm NFM Light"
 font-size    = 12
 font-thicken = true
 
