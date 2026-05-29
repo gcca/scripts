@@ -171,14 +171,38 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 -- end
 
 vim.diagnostic.config({
-    signs = {
-        text = {
-            [vim.diagnostic.severity.ERROR] = '',
-            [vim.diagnostic.severity.WARN] = '',
-            [vim.diagnostic.severity.HINT] = '󰌵',
-            [vim.diagnostic.severity.INFO] = '',
-        },
+    virtual_text = {
+        prefix = function(diag)
+            if diag.severity == vim.diagnostic.severity.ERROR then
+                return "●"
+            elseif diag.severity == vim.diagnostic.severity.WARN then
+                return "▲"
+            elseif diag.severity == vim.diagnostic.severity.INFO then
+                return "■"
+            else
+                return "➤"
+            end
+        end,
+        spacing = 3,
+        source = "if_many",
+        severity = nil,
     },
+    underline = false,
+    update_in_insert = false,
+    severity_sort = true,
+    float = {
+        source = "always",
+        border = "rounded",
+    },
+    signs = false,
+    -- signs = {
+    --     text = {
+    --         [vim.diagnostic.severity.ERROR] = '',
+    --         [vim.diagnostic.severity.WARN] = '',
+    --         [vim.diagnostic.severity.HINT] = '󰌵',
+    --         [vim.diagnostic.severity.INFO] = '',
+    --     },
+    -- },
 })
 
 -- vim.fn.sign_define("DiagnosticSignError", { text = "", texthl = "DiagnosticSignError" })

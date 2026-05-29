@@ -2,7 +2,8 @@
 
 command = /opt/homebrew/bin/fish -l
 
-theme = light: Violet Light,dark: Terafox
+# theme = light: Violet Light,dark: Terafox
+theme = light:Solarized Dark Patched,dark:Terafox
 
 scrollback-limit = 10000
 
@@ -10,7 +11,7 @@ cursor-style               = block
 cursor-style-blink         = true
 shell-integration-features = no-title
 
-macos-titlebar-style        = hidden
+macos-titlebar-style        = transparent
 macos-non-native-fullscreen = false
 macos-window-buttons        = visible
 
@@ -23,8 +24,9 @@ window-inherit-font-size = false
 
 quit-after-last-window-closed = true
 
-font-family  = "IosevkaTerm NFM Light"
-font-size    = 12
+# font-family  = "IosevkaTerm NFM Medium"
+font-family  = "Iosevka Term SS08"
+font-size    = 13
 font-thicken = true
 
 copy-on-select          = clipboard

@@ -95,6 +95,40 @@ return {
           end
         end,
       }
+    elseif model == "Mac17,2" then
+      return {
+        "gthelding/monokai-pro.nvim",
+        lazy = false,
+        priority = 1000,
+        opts = {},
+        config = function()
+          if is_dark then
+            vim.o.background = 'dark'
+            vim.cmd.colorscheme 'terafox'
+          else
+            local solarized = require('solarized')
+            vim.o.termguicolors = true
+            vim.o.background = 'dark'
+            solarized.setup({
+              transparent = {
+                enabled = true,
+              },
+              paletter = 'selenized',
+              variant = 'autumn',
+              styles = {
+                comments = { italic = true, bold = false },
+                variables = { italic = false },
+                keywords = { italic = true },
+              },
+              error_lens = {
+                text = true,
+                symbol = true,
+              },
+            })
+            vim.cmd.colorscheme 'solarized'
+          end
+        end,
+      }
     else
       return {
         "maxmx03/solarized.nvim",
