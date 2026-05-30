@@ -3,7 +3,7 @@
 command = /opt/homebrew/bin/fish -l
 
 # theme = light: Violet Light,dark: Terafox
-theme = light:Solarized Dark Patched,dark:Terafox
+theme = light:iTerm2 Solarized Light,dark:Solarized Dark Patched
 
 scrollback-limit = 10000
 
@@ -25,8 +25,8 @@ window-inherit-font-size = false
 quit-after-last-window-closed = true
 
 # font-family  = "IosevkaTerm NFM Medium"
-font-family  = "Iosevka Term SS08"
-font-size    = 13
+font-family  = "Iosevka Term SS08 Medium"
+font-size    = 14
 font-thicken = true
 
 copy-on-select          = clipboard
