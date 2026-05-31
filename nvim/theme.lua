@@ -59,7 +59,7 @@ return {
                 enabled = true,
               },
               paletter = 'selenized',
-              variant = 'summer',
+              variant = 'winter',
               styles = {
                 comments = { italic = true, bold = false },
                 variables = { italic = false },
