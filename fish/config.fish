@@ -19,11 +19,11 @@ if status is-interactive
 
     set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
 
-    if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
-        fish_config theme choose AtomOneLight
-    else
-        fish_config theme choose tokyonight_night
-    end
+    # if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
+    #     fish_config theme choose AtomOneLight
+    # else
+    #     fish_config theme choose tokyonight_night
+    # end
 
     if set -q HOMEBREW_PREFIX; and test -x $HOMEBREW_PREFIX/bin/starship
         source ($HOMEBREW_PREFIX/bin/starship init fish --print-full-init | psub)
