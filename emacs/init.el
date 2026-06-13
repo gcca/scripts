@@ -1,4 +1,5 @@
 ;; --- 1. Straight.el (modern package manager) ---
+(setq straight-check-for-modifications '(check-on-save find-when-checking))
 (defvar bootstrap-version)
 (let ((bootstrap-file
        (expand-file-name
@@ -22,7 +23,9 @@
 (setq inhibit-startup-message t
       inhibit-startup-screen t
       ring-bell-function 'ignore
-      create-lockfiles nil)
+      create-lockfiles nil
+      ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
+      read-process-output-max (* 1024 1024))
 
 ;; Redirect backup and auto-save files to ~/.emacs.d/tmp/
 (let ((tmp-dir (expand-file-name "wks" user-emacs-directory)))
@@ -36,19 +39,13 @@
 (recentf-mode 1)
 (savehist-mode 1)
 (save-place-mode 1)
+(setq history-length 100
+      history-delete-duplicates t)
 
 ;; --- 3. UI chrome ---
 (menu-bar-mode -1)
 (when (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
-
-;; --- 4. macOS modifiers ---
-(when (eq system-type 'darwin)
-  (setq mac-command-modifier       'meta
-        ns-command-modifier        'meta
-        mac-option-modifier        'none
-        ns-option-modifier         'none
-        mac-right-command-modifier 'meta))
 
 ;; --- 5. Theme ---
 (use-package doom-themes
@@ -74,25 +71,12 @@
   :hook ((c-ts-mode c++-ts-mode python-ts-mode go-ts-mode zig-mode)
          . eglot-ensure)
   :config
-  (setq eglot-autoshutdown t))
+  (setq eglot-autoshutdown t
+        eglot-events-buffer-size 0))
 
 ;; --- 8. Language support ---
 (use-package zig-mode
   :mode "\\.zig\\'")
-
-;; --- 9. SuperMaven (AI completion) ---
-(use-package supermaven
-  :straight (supermaven
-             :type git
-             :host github
-             :repo "binbandit/supermaven.el")
-  :hook (prog-mode . supermaven-mode)
-  :config
-  (setq supermaven-ignore-filetypes '("org" "txt" "md")
-        supermaven-keymaps
-        '((accept-suggestion . "TAB")
-          (clear-suggestion  . "C-]")
-          (accept-word       . "C-j"))))
 
 ;; --- 10. Corfu (completion popup) ---
 (use-package corfu
@@ -106,6 +90,7 @@
 ;; Cape: merge Eglot + dabbrev completions
 (use-package cape
   :init
+  (setq cape-dabbrev-check-other-buffers nil)
   (add-hook 'eglot-managed-mode-hook
             (lambda ()
               (setq-local completion-at-point-functions
