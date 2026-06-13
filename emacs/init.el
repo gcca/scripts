@@ -22,9 +22,13 @@
 (setq inhibit-startup-message t
       inhibit-startup-screen t
       ring-bell-function 'ignore
-      make-backup-files nil
-      auto-save-default nil
       create-lockfiles nil)
+
+;; Redirect backup and auto-save files to ~/.emacs.d/tmp/
+(let ((tmp-dir (expand-file-name "wks" user-emacs-directory)))
+  (make-directory tmp-dir t)
+  (setq backup-directory-alist         `(("." . ,tmp-dir))
+        auto-save-file-name-transforms `((".*" ,tmp-dir t))))
 
 (global-display-line-numbers-mode 1)
 (show-paren-mode 1)
