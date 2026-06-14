@@ -27,7 +27,6 @@
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
       read-process-output-max (* 1024 1024))
 
-;; Redirect backup and auto-save files to ~/.emacs.d/tmp/
 (let ((tmp-dir (expand-file-name "wks" user-emacs-directory)))
   (make-directory tmp-dir t)
   (setq backup-directory-alist         `(("." . ,tmp-dir))
@@ -41,11 +40,13 @@
 (save-place-mode 1)
 (setq history-length 100
       history-delete-duplicates t)
+(setq vc-follow-symlinks t)
 
 ;; --- 3. UI chrome ---
 (menu-bar-mode -1)
 (when (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(xterm-mouse-mode 1)
 
 ;; --- 5. Theme ---
 (use-package doom-themes
