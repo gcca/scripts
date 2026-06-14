@@ -108,7 +108,9 @@
   (setq completion-styles '(orderless basic)
         completion-category-defaults nil
         completion-category-overrides
-        '((file (styles basic partial-completion)))))
+        '((file (styles basic partial-completion)))
+        orderless-matching-styles
+        '(orderless-literal orderless-regexp orderless-flex)))
 
 (use-package marginalia
   :init (marginalia-mode))
