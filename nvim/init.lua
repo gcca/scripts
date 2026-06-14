@@ -639,20 +639,20 @@ require("lazy").setup({
         --     end,
         -- },
         -- --: }}} Nvim-Tree
-        --: {{{ Copilot
-        {
-            "github/copilot.vim",
-            event = "BufReadPost",
-            config = function()
-                -- vim.g.copilot_no_tab_map = true
-                -- vim.keymap.set('i', '<C-CR>', 'copilot#Accept("<CR>")', { expr = true, silent = true })
-
-                vim.keymap.set('i', '<C-j>', '<Plug>(copilot-next)', { silent = true })
-                vim.keymap.set('i', '<C-k>', '<Plug>(copilot-previous)', { silent = true })
-                vim.keymap.set('i', '<C-.>', '<Plug>(copilot-suggest)', { silent = true })
-            end,
-        },
-        --: }}} Copilot
+        -- --: {{{ Copilot
+        -- {
+        --     "github/copilot.vim",
+        --     event = "BufReadPost",
+        --     config = function()
+        --         -- vim.g.copilot_no_tab_map = true
+        --         -- vim.keymap.set('i', '<C-CR>', 'copilot#Accept("<CR>")', { expr = true, silent = true })
+        --
+        --         vim.keymap.set('i', '<C-j>', '<Plug>(copilot-next)', { silent = true })
+        --         vim.keymap.set('i', '<C-k>', '<Plug>(copilot-previous)', { silent = true })
+        --         vim.keymap.set('i', '<C-.>', '<Plug>(copilot-suggest)', { silent = true })
+        --     end,
+        -- },
+        -- --: }}} Copilot
         -- --: {{{ CoC
         -- {
         --     "neoclide/coc.nvim",
