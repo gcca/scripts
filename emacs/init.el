@@ -78,6 +78,14 @@
 (use-package zig-mode
   :mode "\\.zig\\'")
 
+;; --- 9. Version control ---
+(use-package diff-hl
+  :straight (:host github :repo "dgutov/diff-hl")
+  :init
+  (global-diff-hl-mode)
+  :hook
+  (dired-mode . diff-hl-dired-mode))
+
 ;; --- 10. Corfu (completion popup) ---
 (use-package corfu
   :init (global-corfu-mode)
