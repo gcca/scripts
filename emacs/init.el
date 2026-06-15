@@ -73,9 +73,29 @@
          . eglot-ensure)
   :config
   (setq eglot-autoshutdown t
-        eglot-events-buffer-size 0))
+        eglot-events-buffer-size 0)
+  (add-to-list 'eglot-server-programs
+               '(fish-mode . ("fish-lsp" "start"))))
 
 ;; --- 8. Language support ---
+(defun my/fish-eglot-ensure ()
+  "Start Eglot for Fish when fish-lsp is available."
+  (when (executable-find "fish-lsp")
+    (eglot-ensure)))
+
+(defun my/fish-enable-format-on-save ()
+  "Format Fish buffers before save when fish_indent is available."
+  (when (executable-find "fish_indent")
+    (add-hook 'before-save-hook #'fish_indent-before-save nil t)))
+
+(use-package fish-mode
+  :mode "\\.fish\\'"
+  :interpreter "fish"
+  :hook ((fish-mode . my/fish-eglot-ensure)
+         (fish-mode . my/fish-enable-format-on-save))
+  :config
+  (setq fish-enable-auto-indent t))
+
 (use-package zig-mode
   :mode "\\.zig\\'")
 
