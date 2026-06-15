@@ -4,7 +4,8 @@ command = /opt/homebrew/bin/fish -l
 
 # theme = light: Violet Light,dark: Terafox
 # theme = light:iTerm2 Solarized Light,dark:Solarized Dark Patched
-theme = light: Solarized Dark Patched,dark: Terafox
+# theme = light: Solarized Dark Patched,dark: Terafox
+theme = Solarized Dark Patched
 
 scrollback-limit = 10000
 
