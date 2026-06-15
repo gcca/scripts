@@ -47,6 +47,15 @@
 (when (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (xterm-mouse-mode 1)
+(when (fboundp 'mouse-wheel-mode)
+  (mouse-wheel-mode 1))
+(setq mouse-wheel-scroll-amount '(3
+                                  ((shift) . hscroll)
+                                  ((control) . text-scale))
+      mouse-wheel-progressive-speed nil
+      mouse-wheel-follow-mouse t)
+(when (fboundp 'pixel-scroll-precision-mode)
+  (pixel-scroll-precision-mode 1))
 
 ;; --- 5. Theme ---
 (use-package doom-themes
