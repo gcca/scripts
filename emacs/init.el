@@ -67,7 +67,7 @@
 ;; --- 6. Tree-sitter ---
 (use-package treesit-auto
   :config
-  (setq treesit-auto-install 'prompt)
+  (setq treesit-auto-install (if noninteractive nil 'prompt))
   (global-treesit-auto-mode))
 
 (setq major-mode-remap-alist
@@ -84,12 +84,19 @@
   (setq eglot-autoshutdown t
         eglot-events-buffer-size 0)
   (add-to-list 'eglot-server-programs
+               '((yaml-mode yaml-ts-mode) . ("yaml-language-server" "--stdio")))
+  (add-to-list 'eglot-server-programs
                '(fish-mode . ("fish-lsp" "start"))))
 
 ;; --- 8. Language support ---
 (defun my/fish-eglot-ensure ()
   "Start Eglot for Fish when fish-lsp is available."
   (when (executable-find "fish-lsp")
+    (eglot-ensure)))
+
+(defun my/yaml-eglot-ensure ()
+  "Start Eglot for YAML when yaml-language-server is available."
+  (when (executable-find "yaml-language-server")
     (eglot-ensure)))
 
 (defun my/fish-enable-format-on-save ()
@@ -107,6 +114,14 @@
 
 (use-package zig-mode
   :mode "\\.zig\\'")
+
+(use-package yaml-mode
+  :mode "\\.ya?ml\\'"
+  :hook (yaml-mode . my/yaml-eglot-ensure))
+
+(use-package yaml-ts-mode
+  :straight nil
+  :hook (yaml-ts-mode . my/yaml-eglot-ensure))
 
 ;; --- 9. Version control ---
 (use-package diff-hl
