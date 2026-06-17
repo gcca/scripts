@@ -32,6 +32,13 @@
   (setq backup-directory-alist         `(("." . ,tmp-dir))
         auto-save-file-name-transforms `((".*" ,tmp-dir t))))
 
+(defun my/add-line-number-gap ()
+  "Add a display-only gap between line numbers and buffer text."
+  (when display-line-numbers-mode
+    (setq-local line-prefix "       "
+                wrap-prefix "       ")))
+
+(add-hook 'display-line-numbers-mode-hook #'my/add-line-number-gap)
 (global-display-line-numbers-mode 1)
 (show-paren-mode 1)
 (electric-pair-mode 1)
