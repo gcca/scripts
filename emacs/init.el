@@ -72,25 +72,26 @@
   (setq treesit-auto-install (if noninteractive nil 'prompt))
   (global-treesit-auto-mode))
 
-(setq major-mode-remap-alist
-      '((c-mode      . c-ts-mode)
-        (c++-mode    . c++-ts-mode)
-        (python-mode . python-ts-mode)
-        (go-mode     . go-ts-mode)))
-
 ;; --- 7. Eglot (LSP) ---
 (use-package eglot
-  :hook ((c-ts-mode c++-ts-mode python-ts-mode go-ts-mode zig-mode)
+  :hook ((c-mode c-ts-mode c++-mode c++-ts-mode python-mode python-ts-mode go-mode go-ts-mode zig-mode)
          . eglot-ensure)
   :config
   (setq eglot-autoshutdown t
         eglot-events-buffer-size 0)
+  (add-to-list 'eglot-server-programs
+               '((cmake-mode cmake-ts-mode) . ("cmake-language-server")))
   (add-to-list 'eglot-server-programs
                '((yaml-mode yaml-ts-mode) . ("yaml-language-server" "--stdio")))
   (add-to-list 'eglot-server-programs
                '(fish-mode . ("fish-lsp" "start"))))
 
 ;; --- 8. Language support ---
+(defun my/cmake-eglot-ensure ()
+  "Start Eglot for CMake when cmake-language-server is available."
+  (when (executable-find "cmake-language-server")
+    (eglot-ensure)))
+
 (defun my/fish-eglot-ensure ()
   "Start Eglot for Fish when fish-lsp is available."
   (when (executable-find "fish-lsp")
@@ -116,6 +117,18 @@
 
 (use-package zig-mode
   :mode "\\.zig\\'")
+
+(use-package cmake-mode
+  :mode (("CMakeLists\\.txt\\'" . cmake-mode)
+         ("\\.cmake\\'" . cmake-mode))
+  :hook (cmake-mode . my/cmake-eglot-ensure))
+
+(use-package cmake-ts-mode
+  :straight nil
+  :hook (cmake-ts-mode . my/cmake-eglot-ensure))
+
+(use-package modern-cpp-font-lock
+  :hook ((c++-mode c++-ts-mode) . modern-c++-font-lock-mode))
 
 (use-package yaml-mode
   :mode "\\.ya?ml\\'"
