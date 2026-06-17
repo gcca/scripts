@@ -125,6 +125,10 @@
   :straight nil
   :hook (yaml-ts-mode . my/yaml-eglot-ensure))
 
+(use-package conf-mode
+  :straight nil
+  :mode (("/\\.config/ghostty/config\\'" . conf-unix-mode)))
+
 ;; --- 9. Version control ---
 (use-package diff-hl
   :straight (:host github :repo "dgutov/diff-hl")
