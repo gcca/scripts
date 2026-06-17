@@ -195,3 +195,13 @@
 ;; --- 13. Which-key ---
 (use-package which-key
   :init (which-key-mode))
+
+;; --- 14. Inline diagnostics ---
+(use-package sideline
+  :hook (flymake-mode . sideline-mode)
+  :init
+  (setq sideline-backends-right '(sideline-flymake)
+        sideline-delay 0.2))
+
+(use-package sideline-flymake
+  :after sideline)
