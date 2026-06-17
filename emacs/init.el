@@ -40,6 +40,8 @@
 (save-place-mode 1)
 (setq history-length 100
       history-delete-duplicates t)
+(setq require-final-newline t)
+(add-hook 'before-save-hook #'delete-trailing-whitespace)
 (setq vc-follow-symlinks t)
 
 ;; --- 3. UI chrome ---
