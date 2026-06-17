@@ -142,6 +142,9 @@
   :straight nil
   :mode (("/\\.config/ghostty/config\\'" . conf-unix-mode)))
 
+(use-package protobuf-mode
+  :mode "\\.proto\\'")
+
 ;; --- 9. Version control ---
 (use-package diff-hl
   :straight (:host github :repo "dgutov/diff-hl")
