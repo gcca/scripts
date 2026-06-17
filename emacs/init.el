@@ -149,6 +149,10 @@
   :straight nil
   :hook (yaml-ts-mode . my/yaml-eglot-ensure))
 
+(use-package markdown-mode
+  :mode (("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode)))
+
 (use-package conf-mode
   :straight nil
   :mode (("/\\.config/ghostty/config\\'" . conf-unix-mode)))
