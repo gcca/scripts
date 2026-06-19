@@ -160,6 +160,13 @@
 (use-package protobuf-mode
   :mode "\\.proto\\'")
 
+(use-package web-mode
+  :mode "\\.csp\\'"
+  :config
+  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'"))
+  (setq web-mode-markup-indent-offset 2
+        web-mode-code-indent-offset 2))
+
 ;; --- 9. Version control ---
 (use-package diff-hl
   :straight (:host github :repo "dgutov/diff-hl")
