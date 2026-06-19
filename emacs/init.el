@@ -168,7 +168,7 @@
   :hook
   (dired-mode . diff-hl-dired-mode))
 
-;; --- 10. Corfu (completion popup) ---
+;; --- 10. Completion: Corfu + Copilot + Cape ---
 (use-package corfu
   :init (global-corfu-mode)
   :config
@@ -176,6 +176,17 @@
         corfu-auto-delay 0.08
         corfu-popupinfo-delay '(0.5 . 0.2))
   (corfu-popupinfo-mode 1))
+
+(use-package copilot
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  :hook (prog-mode . copilot-mode)
+  :bind (:map copilot-completion-map
+              ("<tab>" . copilot-accept-completion)
+              ("TAB" . copilot-accept-completion)
+              ("C-<tab>" . copilot-accept-completion-by-word)
+              ("C-TAB" . copilot-accept-completion-by-word)
+              ("M-n" . copilot-next-completion)
+              ("M-p" . copilot-previous-completion)))
 
 ;; Cape: merge Eglot + dabbrev completions
 (use-package cape
