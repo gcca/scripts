@@ -149,6 +149,10 @@
   :straight nil
   :hook (yaml-ts-mode . my/yaml-eglot-ensure))
 
+(use-package dockerfile-mode
+  :mode (("/Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode)
+         ("\\.dockerfile\\'" . dockerfile-mode)))
+
 (use-package markdown-mode
   :mode (("\\.md\\'" . markdown-mode)
          ("\\.markdown\\'" . markdown-mode)))
