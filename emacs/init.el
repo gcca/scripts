@@ -35,8 +35,8 @@
 (defun my/add-line-number-gap ()
   "Add a display-only gap between line numbers and buffer text."
   (when display-line-numbers-mode
-    (setq-local line-prefix "       "
-                wrap-prefix "       ")))
+    (setq-local line-prefix "               "
+                wrap-prefix "               ")))
 
 (add-hook 'display-line-numbers-mode-hook #'my/add-line-number-gap)
 (global-display-line-numbers-mode 1)
