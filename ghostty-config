@@ -28,7 +28,7 @@ quit-after-last-window-closed = true
 # font-family  = "IosevkaTerm NFM Medium"
 # font-family  = "IosevkaTerm NFM"
 font-family  = "Iosevka Term SS08 Medium"
-font-size    = 15
+font-size    = 14
 font-thicken = true
 
 copy-on-select          = clipboard
