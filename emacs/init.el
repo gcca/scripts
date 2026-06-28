@@ -89,7 +89,7 @@
          . eglot-ensure)
   :config
   (setq eglot-autoshutdown t
-        eglot-events-buffer-size 0)
+        eglot-events-buffer-config '(:size 0 :format full))
   (add-to-list 'eglot-server-programs
                '((cmake-mode cmake-ts-mode) . ("cmake-language-server")))
   (add-to-list 'eglot-server-programs
@@ -190,6 +190,8 @@
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  :init
+  (setq copilot-indent-offset-warning-disable t)
   :hook (prog-mode . copilot-mode)
   :bind (:map copilot-completion-map
               ("<tab>" . copilot-accept-completion)
