@@ -25,11 +25,14 @@ window-inherit-font-size = false
 
 quit-after-last-window-closed = true
 
-# font-family  = "IosevkaTerm NFM Medium"
-# font-family  = "IosevkaTerm NFM"
-font-family  = "Iosevka Term SS08 Medium"
-font-size    = 14
-font-thicken = true
+font-family            = "Iosevka Term SS08"
+font-family            = "IosevkaTerm NFM Medium"
+font-style             = Medium
+font-style-bold        = Bold
+font-style-italic      = "Medium Italic"
+font-style-bold-italic = "Bold Italic"
+font-size              = 16
+font-thicken           = false
 
 copy-on-select          = clipboard
 mouse-hide-while-typing = true
