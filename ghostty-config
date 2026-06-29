@@ -7,7 +7,7 @@ command = /opt/homebrew/bin/fish -l
 # theme = Solarized Dark Patched
 theme = TokyoNight Night
 
-scrollback-limit = 10000
+scrollback-limit = 50000
 
 cursor-style               = block
 cursor-style-blink         = true
