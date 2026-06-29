@@ -32,13 +32,7 @@
   (setq backup-directory-alist         `(("." . ,tmp-dir))
         auto-save-file-name-transforms `((".*" ,tmp-dir t))))
 
-(defun my/add-line-number-gap ()
-  "Add a display-only gap between line numbers and buffer text."
-  (when display-line-numbers-mode
-    (setq-local line-prefix "               "
-                wrap-prefix "               ")))
-
-(add-hook 'display-line-numbers-mode-hook #'my/add-line-number-gap)
+(setq display-line-numbers-width 4)
 (global-display-line-numbers-mode 1)
 (show-paren-mode 1)
 (electric-pair-mode 1)
@@ -60,13 +54,6 @@
 (when (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (xterm-mouse-mode 1)
-(when (fboundp 'mouse-wheel-mode)
-  (mouse-wheel-mode 1))
-(setq mouse-wheel-scroll-amount '(3
-                                  ((shift) . hscroll)
-                                  ((control) . text-scale))
-      mouse-wheel-progressive-speed nil
-      mouse-wheel-follow-mouse t)
 (when (fboundp 'pixel-scroll-precision-mode)
   (pixel-scroll-precision-mode 1))
 
@@ -75,7 +62,8 @@
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
-  (load-theme 'doom-tokyo-night t))
+  (load-theme 'doom-tokyo-night t)
+  (set-face-attribute 'line-number nil :box '(:line-width (4 . 0))))
 
 ;; --- 6. Tree-sitter ---
 (use-package treesit-auto
@@ -184,7 +172,7 @@
   :init (global-corfu-mode)
   :config
   (setq corfu-auto t
-        corfu-auto-delay 0.08
+        corfu-auto-delay 0.25
         corfu-popupinfo-delay '(0.5 . 0.2))
   (corfu-popupinfo-mode 1))
 
