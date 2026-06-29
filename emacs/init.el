@@ -51,6 +51,15 @@
 (setq history-length 100
       history-delete-duplicates t)
 (setq require-final-newline t)
+(setq-default indent-tabs-mode nil
+              tab-width 4)
+
+(defun my/untabify-on-save ()
+  "Convert literal tab characters to spaces before saving."
+  (unless (derived-mode-p 'makefile-modes)
+    (untabify (point-min) (point-max))))
+
+(add-hook 'before-save-hook #'my/untabify-on-save)
 (add-hook 'before-save-hook #'delete-trailing-whitespace)
 (setq vc-follow-symlinks t)
 
@@ -161,7 +170,7 @@
 
 (use-package conf-mode
   :straight nil
-  :mode (("/\\.config/ghostty/config\\'" . conf-unix-mode)))
+  :mode (("\\(?:\\.config/ghostty/config\\|ghostty-config\\)\\'" . conf-unix-mode)))
 
 (use-package protobuf-mode
   :mode "\\.proto\\'")

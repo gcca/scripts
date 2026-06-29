@@ -1,4 +1,5 @@
-# vim:set sw=4 ts=4 sts=4 et ft=fish fdm=marker fenc=utf-8:
+# -*- mode: conf-unix; tab-width: 4; indent-tabs-mode: nil; coding: utf-8-unix; -*-
+# vim:set sw=4 ts=4 sts=4 et ft=conf fdm=marker fenc=utf-8:
 
 command = /opt/homebrew/bin/fish -l
 
