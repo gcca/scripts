@@ -62,8 +62,7 @@
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
-  (load-theme 'doom-tokyo-night t)
-  (set-face-attribute 'line-number nil :box '(:line-width (4 . 0))))
+  (load-theme 'doom-tokyo-night t))
 
 ;; --- 6. Tree-sitter ---
 (use-package treesit-auto
