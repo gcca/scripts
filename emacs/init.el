@@ -178,6 +178,30 @@
   :hook
   (dired-mode . diff-hl-dired-mode))
 
+(use-package indent-bars
+  :straight (:host github :repo "jdtsmith/indent-bars")
+  :hook ((prog-mode . indent-bars-mode)
+         (yaml-mode . indent-bars-mode)
+         (yaml-ts-mode . indent-bars-mode))
+  :config
+  (setq indent-bars-treesit-support t
+        indent-bars-no-descend-string t
+        indent-bars-treesit-ignore-blank-lines-types '("module")
+        indent-bars-color '(highlight :face-bg t :blend 0)
+        indent-bars-highlight-current-depth '(:blend 0.5)
+        indent-bars-treesit-scope
+        '((python . ("function_definition" "class_definition"
+                     "if_statement" "for_statement" "while_statement"
+                     "with_statement" "try_statement" "match_statement"))
+          (c      . ("function_definition" "if_statement" "for_statement"
+                     "while_statement" "do_statement" "switch_statement"))
+          (cpp    . ("function_definition" "class_specifier" "namespace_definition"
+                     "if_statement" "for_statement" "while_statement"
+                     "do_statement" "switch_statement" "try_statement"))
+          (go     . ("function_declaration" "method_declaration"
+                     "if_statement" "for_statement"))
+          (zig    . ("fn_decl" "if_statement" "for_statement" "while_statement")))))
+
 ;; --- 10. Completion: Corfu + Copilot + Cape ---
 (use-package corfu
   :init (global-corfu-mode)
@@ -223,7 +247,7 @@
         completion-category-overrides
         '((file (styles basic partial-completion)))
         orderless-matching-styles
-        '(orderless-literal orderless-regexp)))
+        '(orderless-literal orderless-regexp orderless-flex)))
 
 (use-package marginalia
   :init (marginalia-mode))
