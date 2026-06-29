@@ -32,7 +32,13 @@
   (setq backup-directory-alist         `(("." . ,tmp-dir))
         auto-save-file-name-transforms `((".*" ,tmp-dir t))))
 
+(defun my/add-line-number-gap ()
+  (when display-line-numbers-mode
+    (setq-local line-prefix "                "
+                wrap-prefix "                ")))
+
 (setq display-line-numbers-width 4)
+(add-hook 'display-line-numbers-mode-hook #'my/add-line-number-gap)
 (global-display-line-numbers-mode 1)
 (show-paren-mode 1)
 (electric-pair-mode 1)
