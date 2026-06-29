@@ -43,6 +43,7 @@
 (show-paren-mode 1)
 (electric-pair-mode 1)
 (recentf-mode 1)
+(setq recentf-exclude '("/straight/repos/" "/wks/"))
 (savehist-mode 1)
 (save-place-mode 1)
 (setq history-length 100
@@ -59,7 +60,6 @@
 (menu-bar-mode -1)
 (when (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
-(xterm-mouse-mode 1)
 (when (fboundp 'pixel-scroll-precision-mode)
   (pixel-scroll-precision-mode 1))
 
@@ -78,11 +78,11 @@
 
 ;; --- 7. Eglot (LSP) ---
 (use-package eglot
-  :hook ((c-mode c-ts-mode c++-mode c++-ts-mode python-mode python-ts-mode go-mode go-ts-mode zig-mode)
+  :hook ((c-mode c-ts-mode c++-mode c++-ts-mode python-mode python-ts-mode go-mode go-ts-mode)
          . eglot-ensure)
   :config
   (setq eglot-autoshutdown t
-        eglot-events-buffer-config '(:size 0 :format full))
+        eglot-events-buffer-config '(:size 0))
   (add-to-list 'eglot-server-programs
                '((cmake-mode cmake-ts-mode) . ("cmake-language-server")))
   (add-to-list 'eglot-server-programs
@@ -106,6 +106,11 @@
   (when (executable-find "yaml-language-server")
     (eglot-ensure)))
 
+(defun my/zig-eglot-ensure ()
+  "Start Eglot for Zig when zls is available."
+  (when (executable-find "zls")
+    (eglot-ensure)))
+
 (defun my/fish-enable-format-on-save ()
   "Format Fish buffers before save when fish_indent is available."
   (when (executable-find "fish_indent")
@@ -120,7 +125,8 @@
   (setq fish-enable-auto-indent t))
 
 (use-package zig-mode
-  :mode "\\.zig\\'")
+  :mode "\\.zig\\'"
+  :hook (zig-mode . my/zig-eglot-ensure))
 
 (use-package cmake-mode
   :mode (("CMakeLists\\.txt\\'" . cmake-mode)
@@ -217,7 +223,7 @@
         completion-category-overrides
         '((file (styles basic partial-completion)))
         orderless-matching-styles
-        '(orderless-literal orderless-regexp orderless-flex)))
+        '(orderless-literal orderless-regexp)))
 
 (use-package marginalia
   :init (marginalia-mode))
