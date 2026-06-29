@@ -1,3 +1,5 @@
+;;; init.el -*- lexical-binding: t; -*-
+
 ;; --- 1. Straight.el (modern package manager) ---
 (setq straight-check-for-modifications '(check-on-save find-when-checking))
 (defvar bootstrap-version)
