@@ -29,34 +29,32 @@
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
       read-process-output-max (* 1024 1024))
 
-(setq select-enable-clipboard t
-      save-interprogram-paste-before-kill t)
+(defun gcca/pbcopy (beg end)
+  "Copy the active region to the macOS clipboard via pbcopy."
+  (interactive "r")
+  (let ((process-connection-type nil)
+        (proc (start-process "pbcopy" nil "pbcopy")))
+    (process-send-region proc beg end)
+    (process-send-eof proc)))
 
-(when (eq system-type 'darwin)
-  (setq interprogram-cut-function
-        (lambda (text &optional _push)
-          (let ((process-connection-type nil)
-                (proc (start-process "pbcopy" nil "pbcopy")))
-            (process-send-string proc text)
-            (process-send-eof proc)))
-        interprogram-paste-function
-        (lambda ()
-          (let ((text (shell-command-to-string "pbpaste")))
-            (unless (string= text "")
-              text)))))
+(defun gcca/pbpaste ()
+  "Insert the macOS clipboard contents at point via pbpaste."
+  (interactive)
+  (insert (with-output-to-string
+            (call-process "pbpaste" nil standard-output nil))))
 
 (let ((tmp-dir (expand-file-name "wks" user-emacs-directory)))
   (make-directory tmp-dir t)
   (setq backup-directory-alist         `(("." . ,tmp-dir))
         auto-save-file-name-transforms `((".*" ,tmp-dir t))))
 
-(defun my/add-line-number-gap ()
+(defun gcca/add-line-number-gap ()
   (when display-line-numbers-mode
     (setq-local line-prefix "                "
                 wrap-prefix "                ")))
 
 (setq display-line-numbers-width 4)
-(add-hook 'display-line-numbers-mode-hook #'my/add-line-number-gap)
+(add-hook 'display-line-numbers-mode-hook #'gcca/add-line-number-gap)
 (global-display-line-numbers-mode 1)
 (show-paren-mode 1)
 (electric-pair-mode 1)
@@ -70,12 +68,12 @@
 (setq-default indent-tabs-mode nil
               tab-width 4)
 
-(defun my/untabify-on-save ()
+(defun gcca/untabify-on-save ()
   "Convert literal tab characters to spaces before saving."
   (unless (derived-mode-p 'makefile-modes)
     (untabify (point-min) (point-max))))
 
-(add-hook 'before-save-hook #'my/untabify-on-save)
+(add-hook 'before-save-hook #'gcca/untabify-on-save)
 (add-hook 'before-save-hook #'delete-trailing-whitespace)
 (setq vc-follow-symlinks t)
 
@@ -119,27 +117,27 @@
                '(fish-mode . ("fish-lsp" "start"))))
 
 ;; --- 8. Language support ---
-(defun my/cmake-eglot-ensure ()
+(defun gcca/cmake-eglot-ensure ()
   "Start Eglot for CMake when cmake-language-server is available."
   (when (executable-find "cmake-language-server")
     (eglot-ensure)))
 
-(defun my/fish-eglot-ensure ()
+(defun gcca/fish-eglot-ensure ()
   "Start Eglot for Fish when fish-lsp is available."
   (when (executable-find "fish-lsp")
     (eglot-ensure)))
 
-(defun my/yaml-eglot-ensure ()
+(defun gcca/yaml-eglot-ensure ()
   "Start Eglot for YAML when yaml-language-server is available."
   (when (executable-find "yaml-language-server")
     (eglot-ensure)))
 
-(defun my/zig-eglot-ensure ()
+(defun gcca/zig-eglot-ensure ()
   "Start Eglot for Zig when zls is available."
   (when (executable-find "zls")
     (eglot-ensure)))
 
-(defun my/fish-enable-format-on-save ()
+(defun gcca/fish-enable-format-on-save ()
   "Format Fish buffers before save when fish_indent is available."
   (when (executable-find "fish_indent")
     (add-hook 'before-save-hook #'fish_indent-before-save nil t)))
@@ -147,34 +145,34 @@
 (use-package fish-mode
   :mode "\\.fish\\'"
   :interpreter "fish"
-  :hook ((fish-mode . my/fish-eglot-ensure)
-         (fish-mode . my/fish-enable-format-on-save))
+  :hook ((fish-mode . gcca/fish-eglot-ensure)
+         (fish-mode . gcca/fish-enable-format-on-save))
   :config
   (setq fish-enable-auto-indent t))
 
 (use-package zig-mode
   :mode "\\.zig\\'"
-  :hook (zig-mode . my/zig-eglot-ensure))
+  :hook (zig-mode . gcca/zig-eglot-ensure))
 
 (use-package cmake-mode
   :mode (("CMakeLists\\.txt\\'" . cmake-mode)
          ("\\.cmake\\'" . cmake-mode))
-  :hook (cmake-mode . my/cmake-eglot-ensure))
+  :hook (cmake-mode . gcca/cmake-eglot-ensure))
 
 (use-package cmake-ts-mode
   :straight nil
-  :hook (cmake-ts-mode . my/cmake-eglot-ensure))
+  :hook (cmake-ts-mode . gcca/cmake-eglot-ensure))
 
 (use-package modern-cpp-font-lock
   :hook ((c++-mode c++-ts-mode) . modern-c++-font-lock-mode))
 
 (use-package yaml-mode
   :mode "\\.ya?ml\\'"
-  :hook (yaml-mode . my/yaml-eglot-ensure))
+  :hook (yaml-mode . gcca/yaml-eglot-ensure))
 
 (use-package yaml-ts-mode
   :straight nil
-  :hook (yaml-ts-mode . my/yaml-eglot-ensure))
+  :hook (yaml-ts-mode . gcca/yaml-eglot-ensure))
 
 (use-package dockerfile-mode
   :mode (("/Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-mode)
