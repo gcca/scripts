@@ -40,3 +40,5 @@ mouse-hide-while-typing = true
 
 desktop-notifications = false
 bell-features = audio,title,attention
+
+macos-option-as-alt = left

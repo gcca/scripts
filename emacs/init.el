@@ -29,6 +29,22 @@
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
       read-process-output-max (* 1024 1024))
 
+(setq select-enable-clipboard t
+      save-interprogram-paste-before-kill t)
+
+(when (eq system-type 'darwin)
+  (setq interprogram-cut-function
+        (lambda (text &optional _push)
+          (let ((process-connection-type nil)
+                (proc (start-process "pbcopy" nil "pbcopy")))
+            (process-send-string proc text)
+            (process-send-eof proc)))
+        interprogram-paste-function
+        (lambda ()
+          (let ((text (shell-command-to-string "pbpaste")))
+            (unless (string= text "")
+              text)))))
+
 (let ((tmp-dir (expand-file-name "wks" user-emacs-directory)))
   (make-directory tmp-dir t)
   (setq backup-directory-alist         `(("." . ,tmp-dir))
