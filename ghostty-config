@@ -4,7 +4,7 @@
 command = /opt/homebrew/bin/fish -l
 
 # theme = light: Solarized Dark Patched,dark: Terafox
-theme = Batman
+theme = TokyoNight Night
 
 scrollback-limit = 250000
 
