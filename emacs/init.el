@@ -83,24 +83,41 @@
       ring-bell-function 'ignore
       create-lockfiles nil
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
-      read-process-output-max (* 1024 1024))
+      read-process-output-max (* 1024 1024)
+      ;; Native compilation runs in the background; keep its warnings out of
+      ;; the way (they land in *Warnings* and are rarely actionable here).
+      native-comp-async-report-warnings-errors 'silent)
+
+;;;; PATH (GUI Emacs does not load fish config.fish)
+
+;; Bun installs to ~/.bun/bin; Homebrew tools to /opt/homebrew/bin.  Without
+;; these, `executable-find' misses bun/bunx and JS/TS Eglot never starts.
+;; Prepend in listed priority order (bun wins) and de-duplicate, so reloading
+;; init.el never reorders precedence or stacks duplicates onto exec-path/$PATH.
+(let ((dirs (seq-filter #'file-directory-p
+                        (list (expand-file-name "~/.bun/bin")
+                              "/opt/homebrew/bin"
+                              "/opt/homebrew/sbin"
+                              "/usr/local/bin"))))
+  (setq exec-path (delete-dups (append dirs exec-path)))
+  (let ((path (split-string (or (getenv "PATH") "") path-separator t)))
+    (setenv "PATH" (string-join (delete-dups (append dirs path))
+                                path-separator))))
 
 ;;;; macOS clipboard
 
 (defun gcca/pbcopy (beg end)
-  "Copy the selected region (BEG..END) to the macOS clipboard via pbcopy.
+  "Copy the region (BEG..END) to the macOS clipboard via pbcopy.
 Uses a synchronous pipe so the whole block is written before returning."
   (interactive "r")
   (unless (use-region-p)
     (user-error "No active region to copy"))
-  (let ((beg (region-beginning))
-        (end (region-end)))
-    ;; call-process-region waits until pbcopy exits; start-process +
-    ;; process-send-region can return before stdin is fully consumed.
-    (let ((status (call-process-region beg end "pbcopy" nil nil nil)))
-      (unless (eq status 0)
-        (error "pbcopy failed with status %s" status)))
-    (message "Copied %d characters to clipboard" (- end beg))))
+  ;; call-process-region waits until pbcopy exits; start-process +
+  ;; process-send-region can return before stdin is fully consumed.
+  (let ((status (call-process-region beg end "pbcopy" nil nil nil)))
+    (unless (eq status 0)
+      (error "pbcopy failed with status %s" status)))
+  (message "Copied %d characters to clipboard" (- end beg)))
 
 (defun gcca/pbpaste ()
   "Insert the macOS clipboard at point via pbpaste.
@@ -118,6 +135,34 @@ Reads clipboard synchronously.  With an active region and
 
 ;; Replace active region when pasting (same as yank under delete-selection-mode).
 (put 'gcca/pbpaste 'delete-selection t)
+
+(defun gcca/copy-buffer-file-name (&optional arg)
+  "Copy the current buffer's file name to the clipboard.
+Pushes to the kill ring (in-Emacs yank / GUI clipboard) and to the
+macOS system clipboard via pbcopy (terminal Emacs has no
+interprogram-cut).  With no prefix ARG, copy the absolute path; with
+one \\[universal-argument], the base name only; with two, the path
+relative to the project root (falling back to the absolute path)."
+  (interactive "P")
+  (let ((file (or buffer-file-name
+                  (and (derived-mode-p 'dired-mode) default-directory))))
+    (unless file
+      (user-error "Buffer is not visiting a file"))
+    (let ((name
+           (cond
+            ((equal arg '(4))
+             (file-name-nondirectory (directory-file-name file)))
+            ((equal arg '(16))
+             (if-let* ((proj (project-current nil (file-name-directory file))))
+                 (file-relative-name file (project-root proj))
+               file))
+            (t file))))
+      (kill-new name)
+      ;; call-process-region with a string START sends it as stdin (END ignored).
+      (let ((status (call-process-region name nil "pbcopy")))
+        (unless (eq status 0)
+          (error "pbcopy failed with status %s" status)))
+      (message "Copied: %s" name))))
 
 ;;;; Buffer commands
 
@@ -160,17 +205,12 @@ Reads clipboard synchronously.  With an active region and
 ;;;; Shell
 
 ;; Prefer fish for interactive and non-interactive shell executions
-;; (M-x shell, compile, M-!, M-&, etc.).
+;; (M-x shell, compile, M-!, M-&, etc.) and any child that reads $SHELL.
 (let ((fish (or (executable-find "fish") "/opt/homebrew/bin/fish")))
   (setq shell-file-name fish
         explicit-shell-file-name fish
-        shell-command-switch "-c"))
-
-;; Stream process output into Emacs as it arrives:
-;; - PTY so children line-buffer (pipes often fully buffer)
-;; - disable adaptive read buffering (Emacs otherwise coalesces small chunks)
-(setq process-connection-type t
-      process-adaptive-read-buffering nil)
+        shell-command-switch "-c")
+  (setenv "SHELL" fish))
 
 ;;;; Undo history
 
@@ -191,14 +231,14 @@ Reads clipboard synchronously.  With an active region and
 
 ;;;; Display and history
 
-(defun gcca/add-line-number-gap ()
-  (when display-line-numbers-mode
-    (setq-local line-prefix "    "
-                wrap-prefix "    ")))
+;; (defun gcca/add-line-number-gap ()
+;;   (when display-line-numbers-mode
+;;     (setq-local line-prefix "    "
+;;                 wrap-prefix "    ")))
+;; (add-hook 'display-line-numbers-mode-hook #'gcca/add-line-number-gap)
 
 (setq display-line-numbers-width 4
       display-line-numbers-type 'relative)
-(add-hook 'display-line-numbers-mode-hook #'gcca/add-line-number-gap)
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'display-line-numbers-mode)
 (show-paren-mode 1)
@@ -258,18 +298,47 @@ Comint + PTY makes output show while the process runs (fish-friendly)."
       comint-move-point-for-output t
       comint-scroll-show-maximum-output t)
 
-(defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
-  "Like `shell-command', but run in the current project root.
-Leaves the buffer's `default-directory' unchanged (no need for `cd')."
-  (interactive
-   (list (read-shell-command "Shell command: ")
-         current-prefix-arg
-         shell-command-default-error-buffer))
+(defun gcca/project-default-directory ()
+  "Return the session project root as a `default-directory'.
+Uses the project containing `gcca/compile-directory' (Emacs startup
+cwd), else that directory."
   ;; project.el is deferred (use-package-always-defer); load before project-*.
   (require 'project)
-  (let* ((root (project-root (project-current t)))
-         (default-directory (file-name-as-directory root)))
+  (let* ((base gcca/compile-directory)
+         (proj (project-current nil base)))
+    (file-name-as-directory
+     (expand-file-name
+      (if proj (project-root proj) base)))))
+
+(defun gcca/read-shell-command-in-project (prompt)
+  "Read a shell command with path completion rooted at the project.
+PROMPT is passed to `read-shell-command'."
+  (let ((default-directory (gcca/project-default-directory)))
+    (read-shell-command prompt)))
+
+(defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
+  "Like `shell-command', but run under the session project root.
+Synchronous: blocks Emacs until COMMAND exits (see
+`gcca/async-shell-command-in-project' for a non-blocking variant).
+Leaves the buffer's `default-directory' unchanged."
+  (interactive
+   (list (gcca/read-shell-command-in-project "Shell command: ")
+         current-prefix-arg
+         shell-command-default-error-buffer))
+  (let ((default-directory (gcca/project-default-directory)))
     (shell-command command output-buffer error-buffer)))
+
+(defun gcca/async-shell-command-in-project (command &optional output-buffer error-buffer)
+  "Like `async-shell-command', but run under the session project root.
+Non-blocking: runs COMMAND in a `*Async Shell Command*' buffer whose
+output streams while Emacs stays responsive.  Leaves the buffer's
+`default-directory' unchanged."
+  (interactive
+   (list (gcca/read-shell-command-in-project "Shell command: ")
+         current-prefix-arg
+         shell-command-default-error-buffer))
+  (let ((default-directory (gcca/project-default-directory)))
+    (async-shell-command command output-buffer error-buffer)))
 
 ;;; Global keybindings
 
@@ -277,9 +346,17 @@ Leaves the buffer's `default-directory' unchanged (no need for `cd')."
 
 (global-set-key (kbd "<f6>") #'recompile)
 ;; C-` is free in vanilla Emacs and unused elsewhere in this config.
-(global-set-key (kbd "C-`") #'gcca/shell-command-in-project)
+;; C-` runs the async (non-blocking) variant; C-S-` the synchronous one.
+;; Ghostty+KKP reports Shift unambiguously, so C-S-` is distinct from C-`.
+(global-set-key (kbd "C-`") #'gcca/async-shell-command-in-project)
+(global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
 
 ;;;; Completion
+
+;; KKP distinguishes the physical Tab key (`<tab>') from C-i (`TAB').
+;; Emacs only binds the latter in shell-command minibuffers by default.
+(keymap-set minibuffer-local-shell-command-map
+            "<tab>" #'completion-at-point)
 
 (global-set-key (kbd "M-TAB") #'completion-at-point)
 (global-set-key (kbd "C-M-i") #'completion-at-point)
@@ -332,19 +409,44 @@ Leaves the buffer's `default-directory' unchanged (no need for `cd')."
   ;; Remember run-once / run-for-all choices outside the package defaults.
   (setq mc/list-file (expand-file-name "mc-lists.el" user-emacs-directory)))
 
+;;;; Avy
+
+;; https://github.com/abo-abo/avy
+;; Jump to visible text with a char-based decision tree (like easymotion).
+;; M-g f / M-g g stay with consult; use M-g l for line jumps.
+(use-package avy
+  :bind (("C-:" . avy-goto-char)
+         ("C-'" . avy-goto-char-2)
+         ("M-g l" . avy-goto-line)
+         ("M-g w" . avy-goto-word-1)
+         ("C-c C-j" . avy-resume))
+  :config
+  ;; Bind avy-isearch to C-' in isearch-mode-map (pick among visible matches).
+  (avy-setup-default))
+
 ;;; UI
 
 ;;;; Theme
+
+;; Trust every theme so `customize-themes' / `load-theme' never prompt
+;; "Loading a theme can run Lisp code.  Really load?".  Set as plain code
+;; (not via Customize) so relocating Custom to custom.el cannot drop it.
+(setq custom-safe-themes t)
 
 (use-package doom-themes
   :demand t
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t
-        doom-themes-padded-modeline t))
-  ;; (load-theme 'doom-tokyo-night t)
-  ;; (set-face-attribute 'line-number nil
-  ;;                      :foreground "#3a3f5c"))
+        doom-themes-padded-modeline t)
+  (load-theme 'doom-tokyo-night t))
+
+;;;; TODO/FIXME highlighting
+
+(use-package hl-todo
+  :demand t
+  :init
+  (global-hl-todo-mode 1))
 
 ;;;; Tree-sitter
 
@@ -372,9 +474,11 @@ With no PROGRAMS, always call `eglot-ensure'."
   (gcca/eglot-ensure-if "clangd" "ccls"))
 
 (defun gcca/eglot-ensure-python ()
-  "Start Eglot for Python when a known language server is available."
+  "Start Eglot for Python when a known language server is available.
+Excludes ruff: Eglot's default `eglot-server-programs' has no ruff entry,
+so gating on it would pass the check yet fail to launch a server."
   (gcca/eglot-ensure-if "pylsp" "pyls" "pyright" "pyright-langserver"
-                        "jedi-language-server" "ruff" "ruff-lsp"))
+                        "jedi-language-server"))
 
 (defun gcca/eglot-ensure-gopls ()
   "Start Eglot for Go when gopls is available."
@@ -399,6 +503,93 @@ With no PROGRAMS, always call `eglot-ensure'."
 (defun gcca/eglot-ensure-yaml-ls ()
   "Start Eglot for YAML when yaml-language-server is available."
   (gcca/eglot-ensure-if "yaml-language-server"))
+
+(defun gcca/eglot-ensure-typescript ()
+  "Start Eglot for JS/TS when bun or typescript-language-server is available."
+  (gcca/eglot-ensure-if "bun" "bunx" "typescript-language-server"))
+
+(defvar gcca/global-tsserver-path
+  (let ((bun-global (expand-file-name
+                      "~/.bun/install/global/node_modules/typescript/lib/tsserver.js")))
+    (when (file-exists-p bun-global) bun-global))
+  "Path to a globally installed TypeScript's tsserver.js.
+
+`typescript-language-server' only auto-detects TypeScript from a
+project's own node_modules; this is passed as `tsserver.fallbackPath'
+so projects with no local `typescript' devDependency still work,
+without shadowing a project's own pinned version.")
+
+;; `eglot-lsp-server' only exists once eglot.el is loaded, which (being
+;; deferred like every other package here) has not happened yet at this
+;; point in init.el -- defer the class/method definitions accordingly.
+(with-eval-after-load 'eglot
+  (defclass gcca-eglot-typescript-server (eglot-lsp-server) ()
+    "Eglot server class for typescript-language-server with a global
+tsserver.js fallback (see `gcca/global-tsserver-path').")
+
+  (cl-defmethod eglot-initialization-options ((_server gcca-eglot-typescript-server))
+    (if gcca/global-tsserver-path
+        `(:tsserver (:fallbackPath ,gcca/global-tsserver-path))
+      (eglot--{}))))
+
+(defun gcca/typescript-project-root ()
+  "Return the current project root, or `default-directory' if none."
+  (if (and (fboundp 'project-current) (project-current))
+      (project-root (project-current))
+    default-directory))
+
+(defun gcca/typescript-tsc-executable (root)
+  "Return a `tsc' executable for ROOT: project-local first, else PATH."
+  (let ((local (expand-file-name "node_modules/.bin/tsc" root)))
+    (if (file-executable-p local) local (executable-find "tsc"))))
+
+(defun gcca/typescript-native-lsp-p (tsc)
+  "Return non-nil when TSC is TypeScript >=7's native tsgo compiler.
+
+TypeScript 7 dropped tsserver.js: the language service is now native
+code built into `tsc', speaking LSP directly via `tsc --lsp --stdio'.
+`typescript-language-server' has nothing to bridge to in that case, so
+detect it by the absence of tsserver.js next to the resolved TSC."
+  (let ((tsserver (expand-file-name
+                   "../lib/tsserver.js"
+                   (file-name-directory (file-truename tsc)))))
+    (not (file-exists-p tsserver))))
+
+(defun gcca/typescript-ls-contact (&optional interactive)
+  "Eglot contact for JS/TS.
+
+TypeScript >=7 (native tsgo): talk to `tsc --lsp --stdio' directly.
+
+TypeScript <7 (classic tsserver): bridge through
+typescript-language-server, preferring project-local
+node_modules/.bin, then bunx, then PATH.  TypeScript itself is
+resolved by the server: project-local node_modules/typescript wins
+if present, else `gcca/global-tsserver-path' is used as a fallback."
+  (let* ((root (gcca/typescript-project-root))
+         (tsc (gcca/typescript-tsc-executable root)))
+    (if (and tsc (gcca/typescript-native-lsp-p tsc))
+        (list tsc "--lsp" "--stdio")
+      (let* ((local (expand-file-name
+                     "node_modules/.bin/typescript-language-server" root))
+             (bunx (executable-find "bunx"))
+             (tls (executable-find "typescript-language-server"))
+             (command
+              (cond
+               ((file-executable-p local)
+                (list local "--stdio"))
+               (bunx
+                (list bunx "typescript-language-server" "--stdio"))
+               (tls
+                (list tls "--stdio"))
+               (interactive
+                (user-error
+                 "No typescript-language-server.  Install it in the project or globally:
+  bun add -d typescript-language-server && bun install
+  bun add -g typescript-language-server"))
+               (t
+                ;; Non-interactive lookup: return a contact eglot will fail clearly on.
+                (list "typescript-language-server" "--stdio")))))
+        (cons 'gcca-eglot-typescript-server command)))))
 
 (defvar gcca/c3-home (expand-file-name "~/.c3")
   "Root of the C3 toolchain install (c3c, c3fmt, c3lsp, stdlib).")
@@ -436,17 +627,24 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
       (setq args (append args (list "-stdlib-path" lib))))
     args))
 
+(defun gcca/eglot-disable-inlay-hints ()
+  "Turn off inlay hints in Eglot-managed buffers."
+  (eglot-inlay-hints-mode -1))
+
 (use-package eglot
   :straight nil
   :hook (((c-ts-mode c++-ts-mode) . gcca/eglot-ensure-clangd)
          (python-ts-mode . gcca/eglot-ensure-python)
-         (go-ts-mode . gcca/eglot-ensure-gopls))
+         (go-ts-mode . gcca/eglot-ensure-gopls)
+         ((js-ts-mode typescript-ts-mode tsx-ts-mode) . gcca/eglot-ensure-typescript))
   :config
-  (setq eglot-autoshutdown t)
+  (setq eglot-autoshutdown t
+        ;; Allow M-. into files outside the project (e.g. node_modules / deps).
+        eglot-extend-to-xref t)
   ;; (set-face-attribute 'eglot-inlay-hint-face nil
   ;;                     :foreground "#34384c"
   ;;                     :background 'unspecified)
-  (add-hook 'eglot-managed-mode-hook (lambda () (eglot-inlay-hints-mode -1)))
+  (add-hook 'eglot-managed-mode-hook #'gcca/eglot-disable-inlay-hints)
   (add-to-list 'eglot-server-programs
                '(cmake-ts-mode . ("cmake-language-server")))
   (add-to-list 'eglot-server-programs
@@ -456,7 +654,17 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   (add-to-list 'eglot-server-programs
                '(nim-mode . ("nimlsp")))
   (add-to-list 'eglot-server-programs
-               '(c3-ts-mode . gcca/c3lsp-contact)))
+               '(c3-ts-mode . gcca/c3lsp-contact))
+  ;; Keep :language-id plists — bare mode symbols shadow eglot's defaults
+  ;; and derive ids like "tsx"/"js", so tsserver won't resolve JSX tags (M-.).
+  ;; Use typescriptreact for *.ts as well (Bun/Hono JSX often lives in .ts).
+  (add-to-list 'eglot-server-programs
+               `(((js-mode :language-id "javascript")
+                  (js-ts-mode :language-id "javascriptreact")
+                  (tsx-ts-mode :language-id "typescriptreact")
+                  (typescript-ts-mode :language-id "typescriptreact")
+                  (typescript-mode :language-id "typescriptreact"))
+                 . gcca/typescript-ls-contact)))
 
 ;;; Languages
 
@@ -481,6 +689,27 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   :straight nil
   :mode "\\.go\\'")
 
+;;;; JavaScript / TypeScript (Bun)
+
+;; Prefer tsx/js tree-sitter modes for React/JSX (needed for eglot language ids).
+;; Order matters: more specific extensions first.  Eglot still sends
+;; language-id "typescriptreact" for typescript-ts-mode (*.ts), not only *.tsx.
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.jsx\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.cts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.mjs\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.cjs\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js-ts-mode))
+
+(defun gcca/js-set-compile-command ()
+  "Set `compile-command' for JS/TS buffers (Bun)."
+  (setq-local compile-command "bun run test"))
+
+(dolist (hook '(js-ts-mode-hook typescript-ts-mode-hook tsx-ts-mode-hook))
+  (add-hook hook #'gcca/js-set-compile-command))
+
 ;;;; Python
 
 (use-package python
@@ -504,10 +733,9 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 
 (defun gcca/c3fmt-buffer-if-available ()
   "Format the current buffer with c3fmt when available.
-c3fmt defaults to hard tabs and only accepts style via a config *file*
-(`--config=PATH`); this command never writes config files.  After a
-successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
-  (when-let ((c3fmt (gcca/c3-executable "c3fmt")))
+The formatter receives no style or indentation overrides.  The
+`--stdin-filepath' argument lets c3fmt discover any project config."
+  (when-let* ((c3fmt (gcca/c3-executable "c3fmt")))
     (let ((out (generate-new-buffer " *c3fmt*")))
       (unwind-protect
           (let* ((path (or buffer-file-name default-directory))
@@ -518,13 +746,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
                           "--stdout"
                           (concat "--stdin-filepath=" path))))
             (if (zerop status)
-                (progn
-                  (with-current-buffer out
-                    ;; One tab from c3fmt = one indent level → two spaces.
-                    (goto-char (point-min))
-                    (while (search-forward "\t" nil t)
-                      (replace-match "  " t t)))
-                  (replace-buffer-contents out))
+                (replace-buffer-contents out)
               (message "c3fmt failed (%s): %s"
                        status
                        (with-current-buffer out (buffer-string)))))
@@ -550,9 +772,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
          (c3-ts-mode . gcca/c3-set-compile-command))
   :init
   (add-to-list 'treesit-language-source-alist
-               '(c3 "https://github.com/c3lang/tree-sitter-c3"))
-  :config
-  (setq c3-ts-mode-indent-offset 2))
+               '(c3 "https://github.com/c3lang/tree-sitter-c3")))
 
 ;;;; Nim
 
@@ -564,13 +784,9 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
 
 ;;;; SQL
 
-;; Emacs 30 has no built-in `sql-ts-mode' (treesit-auto recipe is a no-op).
 (use-package sql
   :straight nil
-  :mode ("\\.sql\\'" . sql-mode)
-  :hook (sql-mode . (lambda ()
-                      (setq-local indent-tabs-mode nil
-                                  tab-width 2))))
+  :mode ("\\.sql\\'" . sql-mode))
 
 ;;;; CMake
 
@@ -639,9 +855,25 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   (local-set-key (kbd "RET") #'gcca/c++-newline-and-indent))
 
 (defun gcca/clang-format-buffer-if-available ()
-  "Format the current buffer with clang-format when available."
-  (when (executable-find "clang-format")
-    (clang-format-buffer)))
+  "Format the current buffer with clang-format when available.
+The formatter receives no style or indentation overrides.  For a
+file-visiting buffer, `--assume-filename' enables project config discovery."
+  (when-let* ((clang-format (executable-find "clang-format")))
+    (let ((out (generate-new-buffer " *clang-format*")))
+      (unwind-protect
+          (let* ((args
+                  (and buffer-file-name
+                       (list (concat "--assume-filename="
+                                     buffer-file-name))))
+                 (status
+                  (apply #'call-process-region
+                         (point-min) (point-max)
+                         clang-format nil out nil args)))
+            (if (zerop status)
+                (replace-buffer-contents out)
+              (message "clang-format failed with status %s" status)))
+        (when (buffer-name out)
+          (kill-buffer out))))))
 
 (defun gcca/enable-clang-format-on-save ()
   "Format C/C++ buffers before saving."
@@ -671,11 +903,6 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   :hook ((c++-ts-mode . gcca/c++-enable-raw-string-indentation)
          ((c-ts-mode c++-ts-mode) . gcca/enable-clang-format-on-save)
          ((c-ts-mode c++-ts-mode) . gcca/c-set-compile-command)))
-
-(use-package clang-format
-  :commands (clang-format-buffer clang-format-region)
-  :config
-  (setq clang-format-fallback-style "LLVM"))
 
 ;;;; YAML
 
@@ -714,9 +941,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   :mode (("\\.html?\\'" . web-mode)
          ("\\.csp\\'" . web-mode))
   :config
-  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'"))
-  (setq web-mode-markup-indent-offset 2
-        web-mode-code-indent-offset 2))
+  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'")))
 
 ;;; Version control
 
@@ -775,17 +1000,19 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
 ;;;; Cape
 
 ;; Cape: merge Eglot + dabbrev completions
+(defun gcca/cape-eglot-capf-setup ()
+  "Merge Eglot, dabbrev, and file completion in Eglot-managed buffers."
+  (setq-local completion-at-point-functions
+              (list (cape-capf-super
+                     #'eglot-completion-at-point
+                     #'cape-dabbrev)
+                    #'cape-file)))
+
 (use-package cape
   :demand t
   :init
   (setq cape-dabbrev-check-other-buffers nil)
-  (add-hook 'eglot-managed-mode-hook
-            (lambda ()
-              (setq-local completion-at-point-functions
-                          (list (cape-capf-super
-                                 #'eglot-completion-at-point
-                                 #'cape-dabbrev)
-                                #'cape-file))))
+  (add-hook 'eglot-managed-mode-hook #'gcca/cape-eglot-capf-setup)
   :config
   ;; Bust Eglot CAPF cache so completions stay fresh while typing.
   (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster))
@@ -894,25 +1121,20 @@ default message is on disk even when the buffer looks unmodified."
 
 ;;; Startup finalize
 
-;; Restore GC settings raised in early-init.el once idle after startup.
+;; Restore GC settings raised in early-init.el once idle after startup, so the
+;; reset never forces a collection during the final steps of startup.
 (add-hook 'emacs-startup-hook
           (lambda ()
-            (setq gc-cons-threshold (* 16 1024 1024)
-                  gc-cons-percentage 0.1)))
+            (run-with-idle-timer
+             1 nil
+             (lambda ()
+               (setq gc-cons-threshold (* 16 1024 1024)
+                     gc-cons-percentage 0.1)))))
 
-;;; Custom output
+;;; Custom file
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(custom-enabled-themes '(doom-ayu-dark))
- '(custom-safe-themes t))
-
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+;; Keep Customize's auto-generated `custom-set-variables'/`custom-set-faces'
+;; out of init.el so it never rewrites this hand-maintained file.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file nil 'nomessage))

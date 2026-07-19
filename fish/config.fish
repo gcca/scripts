@@ -15,13 +15,13 @@ if status is-interactive
     end
 
     #: {{{ Paths
-    fish_add_path \
-        $HOME/.opencode/bin \
-        $HOME/.nimble/bin \
-        $HOME/.local/bin
+    # fish_add_path \
+    #     $HOME/.opencode/bin \
+    #     $HOME/.nimble/bin \
+    #     $HOME/.local/bin
     #: }}} Paths
 
-    set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
+    # set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
 
     # if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
     #     fish_config theme choose AtomOneLight
@@ -43,8 +43,6 @@ if status is-interactive
     set -x LANG en_US.UTF-8
     set -x LC_ALL en_US.UTF-8
     set -x LC_CTYPE en_US.UTF-8
-
-    alias gm='git ci -m'
     #: }}} Env&Vars
 
     #: {{{ Eza
@@ -87,3 +85,5 @@ if status is-interactive
     #: }}} fzf
 end
 # vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
+set -x BUN_INSTALL "$HOME/.bun"
+set -x PATH $BUN_INSTALL/bin $PATH
