@@ -15,13 +15,13 @@ if status is-interactive
     end
 
     #: {{{ Paths
-    fish_add_path \
-        $HOME/.opencode/bin \
-        $HOME/.nimble/bin \
-        $HOME/.local/bin
+    # fish_add_path \
+    #     $HOME/.opencode/bin \
+    #     $HOME/.nimble/bin \
+    #     $HOME/.local/bin
     #: }}} Paths
 
-    set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
+    # set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
 
     # if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
     #     fish_config theme choose AtomOneLight
@@ -43,8 +43,6 @@ if status is-interactive
     set -x LANG en_US.UTF-8
     set -x LC_ALL en_US.UTF-8
     set -x LC_CTYPE en_US.UTF-8
-
-    alias gm='git ci -m'
     #: }}} Env&Vars
 
     #: {{{ Eza
@@ -85,5 +83,13 @@ if status is-interactive
         end
     end
     #: }}} fzf
+
+    #: {{{ git aliases
+    alias gcm='git ci -m'
+    alias gcdp='git ci -m (date +%Y%m%d%H%M%S);and git push'
+    alias gcr='gcm (git log -1 --pretty=%B | tr -d \\n)'
+    alias gcuk='git config user.name gcca;git config user.email git@gcca.dev;git config user.signingkey 4A4593D607AB097D'
+    alias giex='echo -e "cred\n.claudeignore\n.kilo\n__pycache__\nbin/\n*--output\n*--input\n.cache\ncompile_commands.json\n.ninja_*\nbuild/\ndata\nCTX.md" >.git/info/exclude'
+    #: }}} git aliases
 end
 # vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
