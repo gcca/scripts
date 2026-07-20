@@ -160,11 +160,12 @@ Reads clipboard synchronously.  With an active region and
 ;;;; Shell
 
 ;; Prefer fish for interactive and non-interactive shell executions
-;; (M-x shell, compile, M-!, M-&, etc.).
+;; (M-x shell, compile, M-!, M-&, etc.) and any child that reads $SHELL.
 (let ((fish (or (executable-find "fish") "/opt/homebrew/bin/fish")))
   (setq shell-file-name fish
         explicit-shell-file-name fish
-        shell-command-switch "-c"))
+        shell-command-switch "-c")
+  (setenv "SHELL" fish))
 
 ;; Stream process output into Emacs as it arrives:
 ;; - PTY so children line-buffer (pipes often fully buffer)
@@ -191,14 +192,14 @@ Reads clipboard synchronously.  With an active region and
 
 ;;;; Display and history
 
-(defun gcca/add-line-number-gap ()
-  (when display-line-numbers-mode
-    (setq-local line-prefix "    "
-                wrap-prefix "    ")))
+;; (defun gcca/add-line-number-gap ()
+;;   (when display-line-numbers-mode
+;;     (setq-local line-prefix "    "
+;;                 wrap-prefix "    ")))
+;; (add-hook 'display-line-numbers-mode-hook #'gcca/add-line-number-gap)
 
 (setq display-line-numbers-width 4
       display-line-numbers-type 'relative)
-(add-hook 'display-line-numbers-mode-hook #'gcca/add-line-number-gap)
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'display-line-numbers-mode)
 (show-paren-mode 1)
