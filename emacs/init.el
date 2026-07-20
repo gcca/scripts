@@ -260,16 +260,21 @@ Comint + PTY makes output show while the process runs (fish-friendly)."
       comint-scroll-show-maximum-output t)
 
 (defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
-  "Like `shell-command', but run in the current project root.
-Leaves the buffer's `default-directory' unchanged (no need for `cd')."
+  "Like `shell-command', but run under the session project root.
+Uses the project containing `gcca/compile-directory' (Emacs startup
+cwd), else that directory.  Leaves the buffer's `default-directory'
+unchanged."
   (interactive
    (list (read-shell-command "Shell command: ")
          current-prefix-arg
          shell-command-default-error-buffer))
   ;; project.el is deferred (use-package-always-defer); load before project-*.
   (require 'project)
-  (let* ((root (project-root (project-current t)))
-         (default-directory (file-name-as-directory root)))
+  (let* ((base gcca/compile-directory)
+         (proj (project-current nil base))
+         (default-directory
+          (file-name-as-directory
+           (if proj (project-root proj) base))))
     (shell-command command output-buffer error-buffer)))
 
 ;;; Global keybindings
@@ -332,6 +337,21 @@ Leaves the buffer's `default-directory' unchanged (no need for `cd')."
   :init
   ;; Remember run-once / run-for-all choices outside the package defaults.
   (setq mc/list-file (expand-file-name "mc-lists.el" user-emacs-directory)))
+
+;;;; Avy
+
+;; https://github.com/abo-abo/avy
+;; Jump to visible text with a char-based decision tree (like easymotion).
+;; M-g f / M-g g stay with consult; use M-g l for line jumps.
+(use-package avy
+  :bind (("C-:" . avy-goto-char)
+         ("C-'" . avy-goto-char-2)
+         ("M-g l" . avy-goto-line)
+         ("M-g w" . avy-goto-word-1)
+         ("C-c C-j" . avy-resume))
+  :config
+  ;; Bind avy-isearch to C-' in isearch-mode-map (pick among visible matches).
+  (avy-setup-default))
 
 ;;; UI
 
