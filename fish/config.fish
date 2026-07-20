@@ -83,13 +83,5 @@ if status is-interactive
         end
     end
     #: }}} fzf
-
-    #: {{{ git aliases
-    alias gcm='git ci -m'
-    alias gcdp='git ci -m (date +%Y%m%d%H%M%S);and git push'
-    alias gcr='gcm (git log -1 --pretty=%B | tr -d \\n)'
-    alias gcuk='git config user.name gcca;git config user.email git@gcca.dev;git config user.signingkey 4A4593D607AB097D'
-    alias giex='echo -e ".kilo\n__pycache__\nbin/\n*--output\n*--input\n.cache\ncompile_commands.json\n.ninja_*\nbuild/\ndata\nCTX.md" >.git/info/exclude'
-    #: }}} git aliases
 end
 # vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
