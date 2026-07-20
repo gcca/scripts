@@ -85,6 +85,18 @@
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
       read-process-output-max (* 1024 1024))
 
+;;;; PATH (GUI Emacs does not load fish config.fish)
+
+;; Bun installs to ~/.bun/bin; Homebrew tools to /opt/homebrew/bin.  Without
+;; these, `executable-find' misses bun/bunx and JS/TS Eglot never starts.
+(dolist (dir (list (expand-file-name "~/.bun/bin")
+                   "/opt/homebrew/bin"
+                   "/opt/homebrew/sbin"
+                   "/usr/local/bin"))
+  (when (file-directory-p dir)
+    (add-to-list 'exec-path dir)
+    (setenv "PATH" (concat dir path-separator (getenv "PATH")))))
+
 ;;;; macOS clipboard
 
 (defun gcca/pbcopy (beg end)
@@ -422,14 +434,40 @@ With no PROGRAMS, always call `eglot-ensure'."
   (gcca/eglot-ensure-if "yaml-language-server"))
 
 (defun gcca/eglot-ensure-typescript ()
-  "Start Eglot for JS/TS when bun is available (server via bunx)."
-  (gcca/eglot-ensure-if "bun"))
+  "Start Eglot for JS/TS when bun or typescript-language-server is available."
+  (gcca/eglot-ensure-if "bun" "bunx" "typescript-language-server"))
 
-(defun gcca/typescript-ls-contact (&optional _interactive)
-  "Eglot contact for JS/TS: typescript-language-server through bunx.
-Install in the project with:
-  bun add -d typescript typescript-language-server"
-  '("bunx" "typescript-language-server" "--stdio"))
+(defun gcca/typescript-ls-contact (&optional interactive)
+  "Eglot contact for JS/TS via project-local bin, then bunx, then PATH.
+
+Prefer `node_modules/.bin/typescript-language-server' so the server matches
+the project.  Falls back to `bunx typescript-language-server --stdio'.
+
+Install in the project (required for go-to-definition on JSX/imports):
+  bun add -d typescript typescript-language-server
+  bun install"
+  (let* ((root (cond
+                ((and (fboundp 'project-current) (project-current))
+                 (project-root (project-current)))
+                (t default-directory)))
+         (local (expand-file-name
+                 "node_modules/.bin/typescript-language-server" root))
+         (bunx (executable-find "bunx"))
+         (tls (executable-find "typescript-language-server")))
+    (cond
+     ((file-executable-p local)
+      (list local "--stdio"))
+     (bunx
+      (list bunx "typescript-language-server" "--stdio"))
+     (tls
+      (list tls "--stdio"))
+     (interactive
+      (user-error
+       "No typescript-language-server.  In the project run:
+  bun add -d typescript typescript-language-server && bun install"))
+     (t
+      ;; Non-interactive lookup: return a contact eglot will fail clearly on.
+      (list "typescript-language-server" "--stdio")))))
 
 (defvar gcca/c3-home (expand-file-name "~/.c3")
   "Root of the C3 toolchain install (c3c, c3fmt, c3lsp, stdlib).")
@@ -474,7 +512,9 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
          (go-ts-mode . gcca/eglot-ensure-gopls)
          ((js-ts-mode typescript-ts-mode tsx-ts-mode) . gcca/eglot-ensure-typescript))
   :config
-  (setq eglot-autoshutdown t)
+  (setq eglot-autoshutdown t
+        ;; Allow M-. into files outside the project (e.g. node_modules / deps).
+        eglot-extend-to-xref t)
   ;; (set-face-attribute 'eglot-inlay-hint-face nil
   ;;                     :foreground "#34384c"
   ;;                     :background 'unspecified)
@@ -489,8 +529,15 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
                '(nim-mode . ("nimlsp")))
   (add-to-list 'eglot-server-programs
                '(c3-ts-mode . gcca/c3lsp-contact))
+  ;; Keep :language-id plists — bare mode symbols shadow eglot's defaults
+  ;; and derive ids like "tsx"/"js", so tsserver won't resolve JSX tags (M-.).
+  ;; .tsx MUST be tsx-ts-mode + typescriptreact (not typescript-ts-mode).
   (add-to-list 'eglot-server-programs
-               '((js-ts-mode typescript-ts-mode tsx-ts-mode)
+               `(((js-mode :language-id "javascript")
+                  (js-ts-mode :language-id "javascriptreact")
+                  (tsx-ts-mode :language-id "typescriptreact")
+                  (typescript-ts-mode :language-id "typescript")
+                  (typescript-mode :language-id "typescript"))
                  . gcca/typescript-ls-contact)))
 
 ;;; Languages
@@ -517,6 +564,18 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   :mode "\\.go\\'")
 
 ;;;; JavaScript / TypeScript (Bun)
+
+;; Prefer tsx/js tree-sitter modes for React/JSX (needed for eglot language ids).
+;; Order matters: more specific extensions first.  JSX only works in .tsx/.jsx
+;; for tsserver — plain .ts uses typescript-ts-mode (no JSX language id).
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.jsx\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.cts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.mjs\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.cjs\\'" . js-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js-ts-mode))
 
 (defun gcca/js-set-compile-command ()
   "Set `compile-command' for JS/TS buffers (Bun)."
