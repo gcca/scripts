@@ -531,13 +531,13 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
                '(c3-ts-mode . gcca/c3lsp-contact))
   ;; Keep :language-id plists — bare mode symbols shadow eglot's defaults
   ;; and derive ids like "tsx"/"js", so tsserver won't resolve JSX tags (M-.).
-  ;; .tsx MUST be tsx-ts-mode + typescriptreact (not typescript-ts-mode).
+  ;; Use typescriptreact for *.ts as well (Bun/Hono JSX often lives in .ts).
   (add-to-list 'eglot-server-programs
                `(((js-mode :language-id "javascript")
                   (js-ts-mode :language-id "javascriptreact")
                   (tsx-ts-mode :language-id "typescriptreact")
-                  (typescript-ts-mode :language-id "typescript")
-                  (typescript-mode :language-id "typescript"))
+                  (typescript-ts-mode :language-id "typescriptreact")
+                  (typescript-mode :language-id "typescriptreact"))
                  . gcca/typescript-ls-contact)))
 
 ;;; Languages
@@ -566,8 +566,8 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 ;;;; JavaScript / TypeScript (Bun)
 
 ;; Prefer tsx/js tree-sitter modes for React/JSX (needed for eglot language ids).
-;; Order matters: more specific extensions first.  JSX only works in .tsx/.jsx
-;; for tsserver — plain .ts uses typescript-ts-mode (no JSX language id).
+;; Order matters: more specific extensions first.  Eglot still sends
+;; language-id "typescriptreact" for typescript-ts-mode (*.ts), not only *.tsx.
 (add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
 (add-to-list 'auto-mode-alist '("\\.jsx\\'" . js-ts-mode))
 (add-to-list 'auto-mode-alist '("\\.mts\\'" . typescript-ts-mode))
