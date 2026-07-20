@@ -421,6 +421,16 @@ With no PROGRAMS, always call `eglot-ensure'."
   "Start Eglot for YAML when yaml-language-server is available."
   (gcca/eglot-ensure-if "yaml-language-server"))
 
+(defun gcca/eglot-ensure-typescript ()
+  "Start Eglot for JS/TS when bun is available (server via bunx)."
+  (gcca/eglot-ensure-if "bun"))
+
+(defun gcca/typescript-ls-contact (&optional _interactive)
+  "Eglot contact for JS/TS: typescript-language-server through bunx.
+Install in the project with:
+  bun add -d typescript typescript-language-server"
+  '("bunx" "typescript-language-server" "--stdio"))
+
 (defvar gcca/c3-home (expand-file-name "~/.c3")
   "Root of the C3 toolchain install (c3c, c3fmt, c3lsp, stdlib).")
 
@@ -461,7 +471,8 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   :straight nil
   :hook (((c-ts-mode c++-ts-mode) . gcca/eglot-ensure-clangd)
          (python-ts-mode . gcca/eglot-ensure-python)
-         (go-ts-mode . gcca/eglot-ensure-gopls))
+         (go-ts-mode . gcca/eglot-ensure-gopls)
+         ((js-ts-mode typescript-ts-mode tsx-ts-mode) . gcca/eglot-ensure-typescript))
   :config
   (setq eglot-autoshutdown t)
   ;; (set-face-attribute 'eglot-inlay-hint-face nil
@@ -477,7 +488,10 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   (add-to-list 'eglot-server-programs
                '(nim-mode . ("nimlsp")))
   (add-to-list 'eglot-server-programs
-               '(c3-ts-mode . gcca/c3lsp-contact)))
+               '(c3-ts-mode . gcca/c3lsp-contact))
+  (add-to-list 'eglot-server-programs
+               '((js-ts-mode typescript-ts-mode tsx-ts-mode)
+                 . gcca/typescript-ls-contact)))
 
 ;;; Languages
 
@@ -501,6 +515,15 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 (use-package go-ts-mode
   :straight nil
   :mode "\\.go\\'")
+
+;;;; JavaScript / TypeScript (Bun)
+
+(defun gcca/js-set-compile-command ()
+  "Set `compile-command' for JS/TS buffers (Bun)."
+  (setq-local compile-command "bun run test"))
+
+(dolist (hook '(js-ts-mode-hook typescript-ts-mode-hook tsx-ts-mode-hook))
+  (add-hook hook #'gcca/js-set-compile-command))
 
 ;;;; Python
 

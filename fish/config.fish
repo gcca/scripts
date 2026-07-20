@@ -43,6 +43,9 @@ if status is-interactive
     set -x LANG en_US.UTF-8
     set -x LC_ALL en_US.UTF-8
     set -x LC_CTYPE en_US.UTF-8
+
+    set -x BUN_INSTALL "$HOME/.bun"
+    set -x PATH $BUN_INSTALL/bin $PATH
     #: }}} Env&Vars
 
     #: {{{ Eza

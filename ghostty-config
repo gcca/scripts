@@ -31,7 +31,7 @@ font-style             = Medium
 font-style-bold        = Bold
 font-style-italic      = "Medium Italic"
 font-style-bold-italic = "Bold Italic"
-font-size              = 13
+font-size              = 11
 font-thicken           = false
 
 copy-on-select          = clipboard
