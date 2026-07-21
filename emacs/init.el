@@ -461,40 +461,64 @@ tsserver.js fallback (see `gcca/global-tsserver-path').")
         `(:tsserver (:fallbackPath ,gcca/global-tsserver-path))
       (eglot--{}))))
 
+(defun gcca/typescript-project-root ()
+  "Return the current project root, or `default-directory' if none."
+  (if (and (fboundp 'project-current) (project-current))
+      (project-root (project-current))
+    default-directory))
+
+(defun gcca/typescript-tsc-executable (root)
+  "Return a `tsc' executable for ROOT: project-local first, else PATH."
+  (let ((local (expand-file-name "node_modules/.bin/tsc" root)))
+    (if (file-executable-p local) local (executable-find "tsc"))))
+
+(defun gcca/typescript-native-lsp-p (tsc)
+  "Return non-nil when TSC is TypeScript >=7's native tsgo compiler.
+
+TypeScript 7 dropped tsserver.js: the language service is now native
+code built into `tsc', speaking LSP directly via `tsc --lsp --stdio'.
+`typescript-language-server' has nothing to bridge to in that case, so
+detect it by the absence of tsserver.js next to the resolved TSC."
+  (let ((tsserver (expand-file-name
+                   "../lib/tsserver.js"
+                   (file-name-directory (file-truename tsc)))))
+    (not (file-exists-p tsserver))))
+
 (defun gcca/typescript-ls-contact (&optional interactive)
-  "Eglot contact for JS/TS via project-local bin, then bunx, then PATH.
+  "Eglot contact for JS/TS.
 
-Prefer `node_modules/.bin/typescript-language-server' so the server matches
-the project.  Falls back to `bunx typescript-language-server --stdio'.
+TypeScript >=7 (native tsgo): talk to `tsc --lsp --stdio' directly.
 
-TypeScript itself is resolved by the server: project-local
-node_modules/typescript wins if present, else `gcca/global-tsserver-path'
-is used as a fallback."
-  (let* ((root (cond
-                ((and (fboundp 'project-current) (project-current))
-                 (project-root (project-current)))
-                (t default-directory)))
-         (local (expand-file-name
-                 "node_modules/.bin/typescript-language-server" root))
-         (bunx (executable-find "bunx"))
-         (tls (executable-find "typescript-language-server"))
-         (command
-          (cond
-           ((file-executable-p local)
-            (list local "--stdio"))
-           (bunx
-            (list bunx "typescript-language-server" "--stdio"))
-           (tls
-            (list tls "--stdio"))
-           (interactive
-            (user-error
-             "No typescript-language-server.  Install it in the project or globally:
+TypeScript <7 (classic tsserver): bridge through
+typescript-language-server, preferring project-local
+node_modules/.bin, then bunx, then PATH.  TypeScript itself is
+resolved by the server: project-local node_modules/typescript wins
+if present, else `gcca/global-tsserver-path' is used as a fallback."
+  (let* ((root (gcca/typescript-project-root))
+         (tsc (gcca/typescript-tsc-executable root)))
+    (if (and tsc (gcca/typescript-native-lsp-p tsc))
+        (list tsc "--lsp" "--stdio")
+      (let* ((local (expand-file-name
+                     "node_modules/.bin/typescript-language-server" root))
+             (bunx (executable-find "bunx"))
+             (tls (executable-find "typescript-language-server"))
+             (command
+              (cond
+               ((file-executable-p local)
+                (list local "--stdio"))
+               (bunx
+                (list bunx "typescript-language-server" "--stdio"))
+               (tls
+                (list tls "--stdio"))
+               (interactive
+                (user-error
+                 "No typescript-language-server.  Install it in the project or globally:
   bun add -d typescript-language-server && bun install
   bun add -g typescript-language-server"))
-           (t
-            ;; Non-interactive lookup: return a contact eglot will fail clearly on.
-            (list "typescript-language-server" "--stdio")))))
-    (cons 'gcca-eglot-typescript-server command)))
+               (t
+                ;; Non-interactive lookup: return a contact eglot will fail clearly on.
+                (list "typescript-language-server" "--stdio")))))
+        (cons 'gcca-eglot-typescript-server command)))))
 
 (defvar gcca/c3-home (expand-file-name "~/.c3")
   "Root of the C3 toolchain install (c3c, c3fmt, c3lsp, stdlib).")
