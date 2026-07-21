@@ -379,6 +379,13 @@ unchanged."
   ;; (set-face-attribute 'line-number nil
   ;;                      :foreground "#3a3f5c"))
 
+;;;; TODO/FIXME highlighting
+
+(use-package hl-todo
+  :demand t
+  :init
+  (global-hl-todo-mode 1))
+
 ;;;; Tree-sitter
 
 ;; Prefer tree-sitter major modes and richer highlighting when grammars exist.
