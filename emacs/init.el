@@ -437,15 +437,39 @@ With no PROGRAMS, always call `eglot-ensure'."
   "Start Eglot for JS/TS when bun or typescript-language-server is available."
   (gcca/eglot-ensure-if "bun" "bunx" "typescript-language-server"))
 
+(defvar gcca/global-tsserver-path
+  (let ((bun-global (expand-file-name
+                      "~/.bun/install/global/node_modules/typescript/lib/tsserver.js")))
+    (when (file-exists-p bun-global) bun-global))
+  "Path to a globally installed TypeScript's tsserver.js.
+
+`typescript-language-server' only auto-detects TypeScript from a
+project's own node_modules; this is passed as `tsserver.fallbackPath'
+so projects with no local `typescript' devDependency still work,
+without shadowing a project's own pinned version.")
+
+;; `eglot-lsp-server' only exists once eglot.el is loaded, which (being
+;; deferred like every other package here) has not happened yet at this
+;; point in init.el -- defer the class/method definitions accordingly.
+(with-eval-after-load 'eglot
+  (defclass gcca-eglot-typescript-server (eglot-lsp-server) ()
+    "Eglot server class for typescript-language-server with a global
+tsserver.js fallback (see `gcca/global-tsserver-path').")
+
+  (cl-defmethod eglot-initialization-options ((_server gcca-eglot-typescript-server))
+    (if gcca/global-tsserver-path
+        `(:tsserver (:fallbackPath ,gcca/global-tsserver-path))
+      (eglot--{}))))
+
 (defun gcca/typescript-ls-contact (&optional interactive)
   "Eglot contact for JS/TS via project-local bin, then bunx, then PATH.
 
 Prefer `node_modules/.bin/typescript-language-server' so the server matches
 the project.  Falls back to `bunx typescript-language-server --stdio'.
 
-Install in the project (required for go-to-definition on JSX/imports):
-  bun add -d typescript typescript-language-server
-  bun install"
+TypeScript itself is resolved by the server: project-local
+node_modules/typescript wins if present, else `gcca/global-tsserver-path'
+is used as a fallback."
   (let* ((root (cond
                 ((and (fboundp 'project-current) (project-current))
                  (project-root (project-current)))
@@ -453,21 +477,24 @@ Install in the project (required for go-to-definition on JSX/imports):
          (local (expand-file-name
                  "node_modules/.bin/typescript-language-server" root))
          (bunx (executable-find "bunx"))
-         (tls (executable-find "typescript-language-server")))
-    (cond
-     ((file-executable-p local)
-      (list local "--stdio"))
-     (bunx
-      (list bunx "typescript-language-server" "--stdio"))
-     (tls
-      (list tls "--stdio"))
-     (interactive
-      (user-error
-       "No typescript-language-server.  In the project run:
-  bun add -d typescript typescript-language-server && bun install"))
-     (t
-      ;; Non-interactive lookup: return a contact eglot will fail clearly on.
-      (list "typescript-language-server" "--stdio")))))
+         (tls (executable-find "typescript-language-server"))
+         (command
+          (cond
+           ((file-executable-p local)
+            (list local "--stdio"))
+           (bunx
+            (list bunx "typescript-language-server" "--stdio"))
+           (tls
+            (list tls "--stdio"))
+           (interactive
+            (user-error
+             "No typescript-language-server.  Install it in the project or globally:
+  bun add -d typescript-language-server && bun install
+  bun add -g typescript-language-server"))
+           (t
+            ;; Non-interactive lookup: return a contact eglot will fail clearly on.
+            (list "typescript-language-server" "--stdio")))))
+    (cons 'gcca-eglot-typescript-server command)))
 
 (defvar gcca/c3-home (expand-file-name "~/.c3")
   "Root of the C3 toolchain install (c3c, c3fmt, c3lsp, stdlib).")
