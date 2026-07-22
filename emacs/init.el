@@ -271,23 +271,40 @@ Comint + PTY makes output show while the process runs (fish-friendly)."
       comint-move-point-for-output t
       comint-scroll-show-maximum-output t)
 
+(defun gcca/project-default-directory ()
+  "Return the session project root as a `default-directory'.
+Uses the project containing `gcca/compile-directory' (Emacs startup
+cwd), else that directory."
+  ;; project.el is deferred (use-package-always-defer); load before project-*.
+  (require 'project)
+  (let* ((base gcca/compile-directory)
+         (proj (project-current nil base)))
+    (file-name-as-directory
+     (if proj (project-root proj) base))))
+
 (defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
   "Like `shell-command', but run under the session project root.
-Uses the project containing `gcca/compile-directory' (Emacs startup
-cwd), else that directory.  Leaves the buffer's `default-directory'
-unchanged."
+Synchronous: blocks Emacs until COMMAND exits (see
+`gcca/async-shell-command-in-project' for a non-blocking variant).
+Leaves the buffer's `default-directory' unchanged."
   (interactive
    (list (read-shell-command "Shell command: ")
          current-prefix-arg
          shell-command-default-error-buffer))
-  ;; project.el is deferred (use-package-always-defer); load before project-*.
-  (require 'project)
-  (let* ((base gcca/compile-directory)
-         (proj (project-current nil base))
-         (default-directory
-          (file-name-as-directory
-           (if proj (project-root proj) base))))
+  (let ((default-directory (gcca/project-default-directory)))
     (shell-command command output-buffer error-buffer)))
+
+(defun gcca/async-shell-command-in-project (command &optional output-buffer error-buffer)
+  "Like `async-shell-command', but run under the session project root.
+Non-blocking: runs COMMAND in a `*Async Shell Command*' buffer whose
+output streams while Emacs stays responsive.  Leaves the buffer's
+`default-directory' unchanged."
+  (interactive
+   (list (read-shell-command "Shell command: ")
+         current-prefix-arg
+         shell-command-default-error-buffer))
+  (let ((default-directory (gcca/project-default-directory)))
+    (async-shell-command command output-buffer error-buffer)))
 
 ;;; Global keybindings
 
@@ -295,7 +312,9 @@ unchanged."
 
 (global-set-key (kbd "<f6>") #'recompile)
 ;; C-` is free in vanilla Emacs and unused elsewhere in this config.
-(global-set-key (kbd "C-`") #'gcca/shell-command-in-project)
+;; C-S-` runs the async variant; Ghostty+KKP reports Shift unambiguously.
+(global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
+(global-set-key (kbd "C-`") #'gcca/async-shell-command-in-project)
 
 ;;;; Completion
 
