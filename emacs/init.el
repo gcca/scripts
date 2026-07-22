@@ -83,7 +83,10 @@
       ring-bell-function 'ignore
       create-lockfiles nil
       ;; LSP servers send large JSON; read in 1 MB chunks to reduce allocation churn
-      read-process-output-max (* 1024 1024))
+      read-process-output-max (* 1024 1024)
+      ;; Native compilation runs in the background; keep its warnings out of
+      ;; the way (they land in *Warnings* and are rarely actionable here).
+      native-comp-async-report-warnings-errors 'silent)
 
 ;;;; PATH (GUI Emacs does not load fish config.fish)
 
@@ -100,19 +103,17 @@
 ;;;; macOS clipboard
 
 (defun gcca/pbcopy (beg end)
-  "Copy the selected region (BEG..END) to the macOS clipboard via pbcopy.
+  "Copy the region (BEG..END) to the macOS clipboard via pbcopy.
 Uses a synchronous pipe so the whole block is written before returning."
   (interactive "r")
   (unless (use-region-p)
     (user-error "No active region to copy"))
-  (let ((beg (region-beginning))
-        (end (region-end)))
-    ;; call-process-region waits until pbcopy exits; start-process +
-    ;; process-send-region can return before stdin is fully consumed.
-    (let ((status (call-process-region beg end "pbcopy" nil nil nil)))
-      (unless (eq status 0)
-        (error "pbcopy failed with status %s" status)))
-    (message "Copied %d characters to clipboard" (- end beg))))
+  ;; call-process-region waits until pbcopy exits; start-process +
+  ;; process-send-region can return before stdin is fully consumed.
+  (let ((status (call-process-region beg end "pbcopy" nil nil nil)))
+    (unless (eq status 0)
+      (error "pbcopy failed with status %s" status)))
+  (message "Copied %d characters to clipboard" (- end beg)))
 
 (defun gcca/pbpaste ()
   "Insert the macOS clipboard at point via pbpaste.
@@ -312,9 +313,10 @@ output streams while Emacs stays responsive.  Leaves the buffer's
 
 (global-set-key (kbd "<f6>") #'recompile)
 ;; C-` is free in vanilla Emacs and unused elsewhere in this config.
-;; C-S-` runs the async variant; Ghostty+KKP reports Shift unambiguously.
-(global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
+;; C-` runs the async (non-blocking) variant; C-S-` the synchronous one.
+;; Ghostty+KKP reports Shift unambiguously, so C-S-` is distinct from C-`.
 (global-set-key (kbd "C-`") #'gcca/async-shell-command-in-project)
+(global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
 
 ;;;; Completion
 
@@ -393,10 +395,10 @@ output streams while Emacs stays responsive.  Leaves the buffer's
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t
-        doom-themes-padded-modeline t))
-  ;; (load-theme 'doom-tokyo-night t)
-  ;; (set-face-attribute 'line-number nil
-  ;;                      :foreground "#3a3f5c"))
+        doom-themes-padded-modeline t)
+  ;; NO-CONFIRM arg (t) bypasses the safe-theme prompt without needing
+  ;; `custom-safe-themes'.
+  (load-theme 'doom-tokyo-night t))
 
 ;;;; TODO/FIXME highlighting
 
@@ -582,6 +584,10 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
       (setq args (append args (list "-stdlib-path" lib))))
     args))
 
+(defun gcca/eglot-disable-inlay-hints ()
+  "Turn off inlay hints in Eglot-managed buffers."
+  (eglot-inlay-hints-mode -1))
+
 (use-package eglot
   :straight nil
   :hook (((c-ts-mode c++-ts-mode) . gcca/eglot-ensure-clangd)
@@ -595,7 +601,7 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   ;; (set-face-attribute 'eglot-inlay-hint-face nil
   ;;                     :foreground "#34384c"
   ;;                     :background 'unspecified)
-  (add-hook 'eglot-managed-mode-hook (lambda () (eglot-inlay-hints-mode -1)))
+  (add-hook 'eglot-managed-mode-hook #'gcca/eglot-disable-inlay-hints)
   (add-to-list 'eglot-server-programs
                '(cmake-ts-mode . ("cmake-language-server")))
   (add-to-list 'eglot-server-programs
@@ -745,12 +751,15 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
 ;;;; SQL
 
 ;; Emacs 30 has no built-in `sql-ts-mode' (treesit-auto recipe is a no-op).
+(defun gcca/sql-set-indent ()
+  "Use two-space soft indentation in SQL buffers."
+  (setq-local indent-tabs-mode nil
+              tab-width 2))
+
 (use-package sql
   :straight nil
   :mode ("\\.sql\\'" . sql-mode)
-  :hook (sql-mode . (lambda ()
-                      (setq-local indent-tabs-mode nil
-                                  tab-width 2))))
+  :hook (sql-mode . gcca/sql-set-indent))
 
 ;;;; CMake
 
@@ -955,17 +964,19 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
 ;;;; Cape
 
 ;; Cape: merge Eglot + dabbrev completions
+(defun gcca/cape-eglot-capf-setup ()
+  "Merge Eglot, dabbrev, and file completion in Eglot-managed buffers."
+  (setq-local completion-at-point-functions
+              (list (cape-capf-super
+                     #'eglot-completion-at-point
+                     #'cape-dabbrev)
+                    #'cape-file)))
+
 (use-package cape
   :demand t
   :init
   (setq cape-dabbrev-check-other-buffers nil)
-  (add-hook 'eglot-managed-mode-hook
-            (lambda ()
-              (setq-local completion-at-point-functions
-                          (list (cape-capf-super
-                                 #'eglot-completion-at-point
-                                 #'cape-dabbrev)
-                                #'cape-file))))
+  (add-hook 'eglot-managed-mode-hook #'gcca/cape-eglot-capf-setup)
   :config
   ;; Bust Eglot CAPF cache so completions stay fresh while typing.
   (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster))
@@ -1080,19 +1091,10 @@ default message is on disk even when the buffer looks unmodified."
             (setq gc-cons-threshold (* 16 1024 1024)
                   gc-cons-percentage 0.1)))
 
-;;; Custom output
+;;; Custom file
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(custom-enabled-themes '(doom-tokyo-night))
- '(custom-safe-themes t))
-
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+;; Keep Customize's auto-generated `custom-set-variables'/`custom-set-faces'
+;; out of init.el so it never rewrites this hand-maintained file.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file nil 'nomessage))
