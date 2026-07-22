@@ -390,14 +390,17 @@ output streams while Emacs stays responsive.  Leaves the buffer's
 
 ;;;; Theme
 
+;; Trust every theme so `customize-themes' / `load-theme' never prompt
+;; "Loading a theme can run Lisp code.  Really load?".  Set as plain code
+;; (not via Customize) so relocating Custom to custom.el cannot drop it.
+(setq custom-safe-themes t)
+
 (use-package doom-themes
   :demand t
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t
         doom-themes-padded-modeline t)
-  ;; NO-CONFIRM arg (t) bypasses the safe-theme prompt without needing
-  ;; `custom-safe-themes'.
   (load-theme 'doom-tokyo-night t))
 
 ;;;; TODO/FIXME highlighting
