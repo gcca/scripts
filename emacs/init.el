@@ -132,6 +132,34 @@ Reads clipboard synchronously.  With an active region and
 ;; Replace active region when pasting (same as yank under delete-selection-mode).
 (put 'gcca/pbpaste 'delete-selection t)
 
+(defun gcca/copy-buffer-file-name (&optional arg)
+  "Copy the current buffer's file name to the clipboard.
+Pushes to the kill ring (in-Emacs yank / GUI clipboard) and to the
+macOS system clipboard via pbcopy (terminal Emacs has no
+interprogram-cut).  With no prefix ARG, copy the absolute path; with
+one \\[universal-argument], the base name only; with two, the path
+relative to the project root (falling back to the absolute path)."
+  (interactive "P")
+  (let ((file (or buffer-file-name
+                  (and (derived-mode-p 'dired-mode) default-directory))))
+    (unless file
+      (user-error "Buffer is not visiting a file"))
+    (let ((name
+           (cond
+            ((equal arg '(4))
+             (file-name-nondirectory (directory-file-name file)))
+            ((equal arg '(16))
+             (if-let ((proj (project-current nil (file-name-directory file))))
+                 (file-relative-name file (project-root proj))
+               file))
+            (t file))))
+      (kill-new name)
+      ;; call-process-region with a string START sends it as stdin (END ignored).
+      (let ((status (call-process-region name nil "pbcopy")))
+        (unless (eq status 0)
+          (error "pbcopy failed with status %s" status)))
+      (message "Copied: %s" name))))
+
 ;;;; Buffer commands
 
 (defun gcca/revert-all-buffers ()
