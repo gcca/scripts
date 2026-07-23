@@ -92,13 +92,17 @@
 
 ;; Bun installs to ~/.bun/bin; Homebrew tools to /opt/homebrew/bin.  Without
 ;; these, `executable-find' misses bun/bunx and JS/TS Eglot never starts.
-(dolist (dir (list (expand-file-name "~/.bun/bin")
-                   "/opt/homebrew/bin"
-                   "/opt/homebrew/sbin"
-                   "/usr/local/bin"))
-  (when (file-directory-p dir)
-    (add-to-list 'exec-path dir)
-    (setenv "PATH" (concat dir path-separator (getenv "PATH")))))
+;; Prepend in listed priority order (bun wins) and de-duplicate, so reloading
+;; init.el never reorders precedence or stacks duplicates onto exec-path/$PATH.
+(let ((dirs (seq-filter #'file-directory-p
+                        (list (expand-file-name "~/.bun/bin")
+                              "/opt/homebrew/bin"
+                              "/opt/homebrew/sbin"
+                              "/usr/local/bin"))))
+  (setq exec-path (delete-dups (append dirs exec-path)))
+  (let ((path (split-string (or (getenv "PATH") "") path-separator t)))
+    (setenv "PATH" (string-join (delete-dups (append dirs path))
+                                path-separator))))
 
 ;;;; macOS clipboard
 
@@ -149,7 +153,7 @@ relative to the project root (falling back to the absolute path)."
             ((equal arg '(4))
              (file-name-nondirectory (directory-file-name file)))
             ((equal arg '(16))
-             (if-let ((proj (project-current nil (file-name-directory file))))
+             (if-let* ((proj (project-current nil (file-name-directory file))))
                  (file-relative-name file (project-root proj))
                file))
             (t file))))
@@ -207,12 +211,6 @@ relative to the project root (falling back to the absolute path)."
         explicit-shell-file-name fish
         shell-command-switch "-c")
   (setenv "SHELL" fish))
-
-;; Stream process output into Emacs as it arrives:
-;; - PTY so children line-buffer (pipes often fully buffer)
-;; - disable adaptive read buffering (Emacs otherwise coalesces small chunks)
-(setq process-connection-type t
-      process-adaptive-read-buffering nil)
 
 ;;;; Undo history
 
@@ -464,9 +462,11 @@ With no PROGRAMS, always call `eglot-ensure'."
   (gcca/eglot-ensure-if "clangd" "ccls"))
 
 (defun gcca/eglot-ensure-python ()
-  "Start Eglot for Python when a known language server is available."
+  "Start Eglot for Python when a known language server is available.
+Excludes ruff: Eglot's default `eglot-server-programs' has no ruff entry,
+so gating on it would pass the check yet fail to launch a server."
   (gcca/eglot-ensure-if "pylsp" "pyls" "pyright" "pyright-langserver"
-                        "jedi-language-server" "ruff" "ruff-lsp"))
+                        "jedi-language-server"))
 
 (defun gcca/eglot-ensure-gopls ()
   "Start Eglot for Go when gopls is available."
@@ -724,7 +724,7 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 c3fmt defaults to hard tabs and only accepts style via a config *file*
 (`--config=PATH`); this command never writes config files.  After a
 successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
-  (when-let ((c3fmt (gcca/c3-executable "c3fmt")))
+  (when-let* ((c3fmt (gcca/c3-executable "c3fmt")))
     (let ((out (generate-new-buffer " *c3fmt*")))
       (unwind-protect
           (let* ((path (or buffer-file-name default-directory))
@@ -1116,11 +1116,15 @@ default message is on disk even when the buffer looks unmodified."
 
 ;;; Startup finalize
 
-;; Restore GC settings raised in early-init.el once idle after startup.
+;; Restore GC settings raised in early-init.el once idle after startup, so the
+;; reset never forces a collection during the final steps of startup.
 (add-hook 'emacs-startup-hook
           (lambda ()
-            (setq gc-cons-threshold (* 16 1024 1024)
-                  gc-cons-percentage 0.1)))
+            (run-with-idle-timer
+             1 nil
+             (lambda ()
+               (setq gc-cons-threshold (* 16 1024 1024)
+                     gc-cons-percentage 0.1)))))
 
 ;;; Custom file
 
