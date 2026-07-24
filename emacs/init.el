@@ -721,9 +721,8 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 
 (defun gcca/c3fmt-buffer-if-available ()
   "Format the current buffer with c3fmt when available.
-c3fmt defaults to hard tabs and only accepts style via a config *file*
-(`--config=PATH`); this command never writes config files.  After a
-successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
+The formatter receives no style or indentation overrides.  The
+`--stdin-filepath' argument lets c3fmt discover any project config."
   (when-let* ((c3fmt (gcca/c3-executable "c3fmt")))
     (let ((out (generate-new-buffer " *c3fmt*")))
       (unwind-protect
@@ -735,13 +734,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
                           "--stdout"
                           (concat "--stdin-filepath=" path))))
             (if (zerop status)
-                (progn
-                  (with-current-buffer out
-                    ;; One tab from c3fmt = one indent level → two spaces.
-                    (goto-char (point-min))
-                    (while (search-forward "\t" nil t)
-                      (replace-match "  " t t)))
-                  (replace-buffer-contents out))
+                (replace-buffer-contents out)
               (message "c3fmt failed (%s): %s"
                        status
                        (with-current-buffer out (buffer-string)))))
@@ -767,9 +760,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
          (c3-ts-mode . gcca/c3-set-compile-command))
   :init
   (add-to-list 'treesit-language-source-alist
-               '(c3 "https://github.com/c3lang/tree-sitter-c3"))
-  :config
-  (setq c3-ts-mode-indent-offset 2))
+               '(c3 "https://github.com/c3lang/tree-sitter-c3")))
 
 ;;;; Nim
 
@@ -781,16 +772,9 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
 
 ;;;; SQL
 
-;; Emacs 30 has no built-in `sql-ts-mode' (treesit-auto recipe is a no-op).
-(defun gcca/sql-set-indent ()
-  "Use two-space soft indentation in SQL buffers."
-  (setq-local indent-tabs-mode nil
-              tab-width 2))
-
 (use-package sql
   :straight nil
-  :mode ("\\.sql\\'" . sql-mode)
-  :hook (sql-mode . gcca/sql-set-indent))
+  :mode ("\\.sql\\'" . sql-mode))
 
 ;;;; CMake
 
@@ -859,9 +843,25 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   (local-set-key (kbd "RET") #'gcca/c++-newline-and-indent))
 
 (defun gcca/clang-format-buffer-if-available ()
-  "Format the current buffer with clang-format when available."
-  (when (executable-find "clang-format")
-    (clang-format-buffer)))
+  "Format the current buffer with clang-format when available.
+The formatter receives no style or indentation overrides.  For a
+file-visiting buffer, `--assume-filename' enables project config discovery."
+  (when-let* ((clang-format (executable-find "clang-format")))
+    (let ((out (generate-new-buffer " *clang-format*")))
+      (unwind-protect
+          (let* ((args
+                  (and buffer-file-name
+                       (list (concat "--assume-filename="
+                                     buffer-file-name))))
+                 (status
+                  (apply #'call-process-region
+                         (point-min) (point-max)
+                         clang-format nil out nil args)))
+            (if (zerop status)
+                (replace-buffer-contents out)
+              (message "clang-format failed with status %s" status)))
+        (when (buffer-name out)
+          (kill-buffer out))))))
 
 (defun gcca/enable-clang-format-on-save ()
   "Format C/C++ buffers before saving."
@@ -891,11 +891,6 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   :hook ((c++-ts-mode . gcca/c++-enable-raw-string-indentation)
          ((c-ts-mode c++-ts-mode) . gcca/enable-clang-format-on-save)
          ((c-ts-mode c++-ts-mode) . gcca/c-set-compile-command)))
-
-(use-package clang-format
-  :commands (clang-format-buffer clang-format-region)
-  :config
-  (setq clang-format-fallback-style "LLVM"))
 
 ;;;; YAML
 
@@ -934,9 +929,7 @@ successful format, hard tabs are expanded to 2 spaces (Emacs soft tabs)."
   :mode (("\\.html?\\'" . web-mode)
          ("\\.csp\\'" . web-mode))
   :config
-  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'"))
-  (setq web-mode-markup-indent-offset 2
-        web-mode-code-indent-offset 2))
+  (add-to-list 'web-mode-engines-alist '("erb" . "\\.csp\\'")))
 
 ;;; Version control
 
