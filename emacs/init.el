@@ -307,7 +307,14 @@ cwd), else that directory."
   (let* ((base gcca/compile-directory)
          (proj (project-current nil base)))
     (file-name-as-directory
-     (if proj (project-root proj) base))))
+     (expand-file-name
+      (if proj (project-root proj) base)))))
+
+(defun gcca/read-shell-command-in-project (prompt)
+  "Read a shell command with path completion rooted at the project.
+PROMPT is passed to `read-shell-command'."
+  (let ((default-directory (gcca/project-default-directory)))
+    (read-shell-command prompt)))
 
 (defun gcca/shell-command-in-project (command &optional output-buffer error-buffer)
   "Like `shell-command', but run under the session project root.
@@ -315,7 +322,7 @@ Synchronous: blocks Emacs until COMMAND exits (see
 `gcca/async-shell-command-in-project' for a non-blocking variant).
 Leaves the buffer's `default-directory' unchanged."
   (interactive
-   (list (read-shell-command "Shell command: ")
+   (list (gcca/read-shell-command-in-project "Shell command: ")
          current-prefix-arg
          shell-command-default-error-buffer))
   (let ((default-directory (gcca/project-default-directory)))
@@ -327,7 +334,7 @@ Non-blocking: runs COMMAND in a `*Async Shell Command*' buffer whose
 output streams while Emacs stays responsive.  Leaves the buffer's
 `default-directory' unchanged."
   (interactive
-   (list (read-shell-command "Shell command: ")
+   (list (gcca/read-shell-command-in-project "Shell command: ")
          current-prefix-arg
          shell-command-default-error-buffer))
   (let ((default-directory (gcca/project-default-directory)))
@@ -345,6 +352,11 @@ output streams while Emacs stays responsive.  Leaves the buffer's
 (global-set-key (kbd "C-S-`") #'gcca/shell-command-in-project)
 
 ;;;; Completion
+
+;; KKP distinguishes the physical Tab key (`<tab>') from C-i (`TAB').
+;; Emacs only binds the latter in shell-command minibuffers by default.
+(keymap-set minibuffer-local-shell-command-map
+            "<tab>" #'completion-at-point)
 
 (global-set-key (kbd "M-TAB") #'completion-at-point)
 (global-set-key (kbd "C-M-i") #'completion-at-point)
