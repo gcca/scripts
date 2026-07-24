@@ -361,6 +361,54 @@ output streams while Emacs stays responsive.  Leaves the buffer's
 (global-set-key (kbd "M-TAB") #'completion-at-point)
 (global-set-key (kbd "C-M-i") #'completion-at-point)
 
+;;;; Shell command substring history search (fish-style)
+
+;; Type part of a command, then Up/Down (or C-r/C-s, or M-p/M-n) to walk
+;; only the history entries that contain what you typed anywhere in the
+;; command -- like fish's history search.  A thin wrapper over the stock
+;; previous/next-matching-history-element: no timers, the only extra
+;; state is the remembered search string.  Active in every read-shell-command
+;; minibuffer (M-!, M-&, and the gcca/*-in-project readers).
+
+(defvar gcca/history-search-regexp nil
+  "Literal regexp for the in-progress substring history search.")
+
+(defun gcca/history-search (older)
+  "Move to an OLDER (non-nil) or newer history item containing the input.
+A fresh invocation searches for the text before point and
+resets the history position; repeated presses keep that search text and
+walk the history."
+  (unless (memq last-command '(gcca/history-search-older
+                               gcca/history-search-newer))
+    (setq gcca/history-search-regexp
+          (regexp-quote
+           (buffer-substring-no-properties
+            (minibuffer-prompt-end) (point))))
+    (setq-local minibuffer-history-position 0))
+  (condition-case nil
+      (if older
+          (previous-matching-history-element gcca/history-search-regexp 1)
+        (next-matching-history-element gcca/history-search-regexp 1))
+    (error (message "No %s command containing this text"
+                    (if older "earlier" "later")))))
+
+(defun gcca/history-search-older ()
+  "Cycle to an older shell command containing the typed text."
+  (interactive)
+  (gcca/history-search t))
+
+(defun gcca/history-search-newer ()
+  "Cycle to a newer shell command containing the typed text."
+  (interactive)
+  (gcca/history-search nil))
+
+(dolist (key '("<up>" "M-p" "C-r"))
+  (keymap-set minibuffer-local-shell-command-map key
+              #'gcca/history-search-older))
+(dolist (key '("<down>" "M-n" "C-s"))
+  (keymap-set minibuffer-local-shell-command-map key
+              #'gcca/history-search-newer))
+
 ;;;; Movement
 
 (global-set-key (kbd "C-M-]") #'forward-sexp)
