@@ -211,7 +211,12 @@ relative to the project root (falling back to the absolute path)."
 (let ((fish (or (executable-find "fish") "/opt/homebrew/bin/fish")))
   (setq shell-file-name fish
         explicit-shell-file-name fish
-        shell-command-switch "-c")
+        shell-command-switch "-c"
+        ;; `M-x shell' launches `explicit-shell-file-name' with the args in
+        ;; the variable named after it: `explicit-fish-args'.  `-i' forces
+        ;; interactive mode (config.fish, prompt, abbreviations load); `-P'
+        ;; is private mode (no history read or persisted).
+        explicit-fish-args '("-iP"))
   (setenv "SHELL" fish))
 
 ;;;; Undo history
