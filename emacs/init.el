@@ -90,12 +90,14 @@
 
 ;;;; PATH (GUI Emacs does not load fish config.fish)
 
-;; Bun installs to ~/.bun/bin; Homebrew tools to /opt/homebrew/bin.  Without
-;; these, `executable-find' misses bun/bunx and JS/TS Eglot never starts.
-;; Prepend in listed priority order (bun wins) and de-duplicate, so reloading
-;; init.el never reorders precedence or stacks duplicates onto exec-path/$PATH.
+;; Bun installs to ~/.bun/bin, the default OPAM switch to ~/.opam/default/bin,
+;; and Homebrew tools to /opt/homebrew/bin.  Without these, `executable-find'
+;; misses language tools and their Eglot servers.  Prepend in listed priority
+;; order and de-duplicate, so reloading init.el never reorders precedence or
+;; stacks duplicates onto exec-path/$PATH.
 (let ((dirs (seq-filter #'file-directory-p
                         (list (expand-file-name "~/.bun/bin")
+                              (expand-file-name "~/.opam/default/bin")
                               "/opt/homebrew/bin"
                               "/opt/homebrew/sbin"
                               "/usr/local/bin"))))
@@ -532,6 +534,10 @@ so gating on it would pass the check yet fail to launch a server."
   "Start Eglot for Go when gopls is available."
   (gcca/eglot-ensure-if "gopls"))
 
+(defun gcca/eglot-ensure-ocamllsp ()
+  "Start Eglot for OCaml when ocamllsp is available."
+  (gcca/eglot-ensure-if "ocamllsp"))
+
 (defun gcca/eglot-ensure-fish-lsp ()
   "Start Eglot for Fish when fish-lsp is available."
   (gcca/eglot-ensure-if "fish-lsp"))
@@ -736,6 +742,32 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 (use-package go-ts-mode
   :straight nil
   :mode "\\.go\\'")
+
+;;;; OCaml
+
+(defun gcca/neocaml-enable-format-on-save ()
+  "Format OCaml source before save when ocamlformat is available."
+  (when (executable-find "ocamlformat")
+    (setq-local neocaml-format-on-save t)))
+
+;; Neocaml provides tree-sitter modes for .ml/.mli as well as dedicated
+;; modes for dune, opam, OCamllex (.mll), Menhir (.mly), and cram files.
+;; On the first OCaml buffer it offers to install its two tree-sitter grammars.
+(use-package neocaml
+  :hook (neocaml-base-mode . gcca/neocaml-enable-format-on-save))
+
+;; Add OCaml-specific commands on top of Eglot (type enclosing, destruct,
+;; interface inference, implementation/interface switching, and more).
+;; Plain editing remains available when ocamllsp is not installed.
+(use-package ocaml-eglot
+  :after neocaml
+  :hook ((neocaml-base-mode . ocaml-eglot-mode)
+         (ocaml-eglot-mode . gcca/eglot-ensure-ocamllsp))
+  :config
+  (setq ocaml-eglot-syntax-checker 'flymake))
+
+(use-package opam-switch-mode
+  :hook (neocaml-base-mode . opam-switch-mode))
 
 ;;;; JavaScript / TypeScript (Bun)
 
