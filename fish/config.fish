@@ -1,3 +1,4 @@
+# vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
 if status is-interactive
     #: {{{ gcca
     if test (uname) = Darwin
@@ -84,6 +85,8 @@ if status is-interactive
     end
     #: }}} fzf
 end
-# vim: set fdm=marker ft=fish sw=4 ts=4 sts=4 et:
 set -x BUN_INSTALL "$HOME/.bun"
 set -x PATH $BUN_INSTALL/bin $PATH
+# BEGIN opam configuration
+test -r '/Users/gcca/.opam/opam-init/init.fish' && source '/Users/gcca/.opam/opam-init/init.fish' >/dev/null 2>/dev/null; or true
+# END opam configuration
