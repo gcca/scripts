@@ -216,7 +216,7 @@ relative to the project root (falling back to the absolute path)."
         ;; the variable named after it: `explicit-fish-args'.  `-i' forces
         ;; interactive mode (config.fish, prompt, abbreviations load); `-P'
         ;; is private mode (no history read or persisted).
-        explicit-fish-args '("-iP"))
+        explicit-fish-args '("-P"))
   (setenv "SHELL" fish))
 
 ;;;; Undo history
