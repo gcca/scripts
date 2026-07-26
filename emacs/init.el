@@ -458,6 +458,14 @@ walk the history."
          ("C-c C-S-," . mc/mark-all-like-this)
          ("C-c C->" . mc/mark-all-like-this)
          ("C-c C-<" . mc/mark-all-like-this)
+         ;; Whole-symbol matches (\_<...\_>): marking `show' skips the `show'
+         ;; inside `show_memsages'/`do_show'.  The ...-like-this keys above
+         ;; still match substrings; these `C-c s' keys match whole symbols
+         ;; only.  Symbol (not word) boundaries so snake_case stays intact --
+         ;; `_' is a word separator, so word matching would still hit `show'.
+         ("C-c s ." . mc/mark-next-symbol-like-this)
+         ("C-c s ," . mc/mark-previous-symbol-like-this)
+         ("C-c s a" . mc/mark-all-symbols-like-this)
          ("C-S-c C-S-c" . mc/edit-lines)
          ("C-S-<mouse-1>" . mc/add-cursor-on-click))
   :init
