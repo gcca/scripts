@@ -41,3 +41,5 @@ desktop-notifications = false
 bell-features = audio,title,attention
 
 macos-option-as-alt = left
+
+term = xterm-256color
