@@ -4,7 +4,7 @@
 command = direct:/opt/homebrew/bin/fish -l
 
 # theme = light: Solarized Dark Patched,dark: Terafox
-theme = TokyoNight Night
+theme = Gruvbox Dark
 
 scrollback-limit = 300000
 
@@ -26,12 +26,12 @@ window-inherit-font-size = false
 quit-after-last-window-closed = true
 
 font-family            = "Iosevka Term SS08"
-font-family            = "IosevkaTerm NFM Medium"
-font-style             = Medium
-font-style-bold        = Bold
-font-style-italic      = "Medium Italic"
-font-style-bold-italic = "Bold Italic"
-font-size              = 10
+#font-family            = "IosevkaTerm NFM Medium"
+# font-style             = Medium
+# font-style-bold        = Bold
+# font-style-italic      = "Medium Italic"
+# font-style-bold-italic = "Bold Italic"
+font-size              = 9
 font-thicken           = false
 
 copy-on-select          = clipboard
