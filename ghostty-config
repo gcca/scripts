@@ -1,7 +1,7 @@
 # -*- mode: conf-unix; tab-width: 4; indent-tabs-mode: nil; coding: utf-8-unix; -*-
 # vim:set sw=4 ts=4 sts=4 et ft=conf fdm=marker fenc=utf-8:
 
-command = direct:/opt/homebrew/bin/fish -l
+command = direct:/opt/homebrew/bin/fish -lP
 
 # theme = light: Solarized Dark Patched,dark: Terafox
 theme = Gruvbox Dark
