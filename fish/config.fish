@@ -11,7 +11,7 @@ if status is-interactive
 
         set -x NODE_OPTIONS "--localstorage-file=$HOME/.coc-localstorage.db"
         #: }}} Darwin
-    else
+    else if test -x /home/linuxbrew/.linuxbrew/bin/brew
         eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
     end
 
@@ -22,7 +22,7 @@ if status is-interactive
     #     $HOME/.local/bin
     #: }}} Paths
 
-    # set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
+    set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
 
     # if test (date +%H%M) -ge 620 -a (date +%H%M) -le 1835
     #     fish_config theme choose AtomOneLight

@@ -504,6 +504,17 @@ walk the history."
         doom-themes-padded-modeline t)
   (load-theme 'doom-tokyo-night t))
 
+(use-package ef-themes)
+(use-package modus-themes)
+(use-package catppuccin-theme)
+(use-package tokyo-night)
+(use-package kanagawa-themes)
+(use-package nord-theme)
+(use-package kaolin-themes)
+(use-package solarized-theme)
+(use-package gruvbox-theme)
+(use-package zenburn-theme)
+
 ;;;; TODO/FIXME highlighting
 
 (use-package hl-todo
