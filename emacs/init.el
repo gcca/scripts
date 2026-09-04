@@ -548,11 +548,17 @@ With no PROGRAMS, always call `eglot-ensure'."
   (gcca/eglot-ensure-if "clangd" "ccls"))
 
 (defun gcca/eglot-ensure-python ()
-  "Start Eglot for Python when a known language server is available.
-Excludes ruff: Eglot's default `eglot-server-programs' has no ruff entry,
-so gating on it would pass the check yet fail to launch a server."
-  (gcca/eglot-ensure-if "pylsp" "pyls" "pyright" "pyright-langserver"
-                        "jedi-language-server"))
+  "Start Eglot for Python when a known language server is available."
+  (gcca/eglot-ensure-if "pylsp" "pyls" "basedpyright-langserver"
+                        "pyright-langserver" "pyrefly" "ty"
+                        "jedi-language-server" "ruff" "ruff-lsp"))
+
+(defun gcca/eglot-workspace-configuration (_server)
+  (when-let* (((memq major-mode '(python-mode python-ts-mode)))
+              (venv (getenv "VIRTUAL_ENV"))
+              (python (expand-file-name "bin/python" venv))
+              ((file-executable-p python)))
+    `(:python (:pythonPath ,python))))
 
 (defun gcca/eglot-ensure-gopls ()
   "Start Eglot for Go when gopls is available."
@@ -712,13 +718,20 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 (use-package eglot
   :straight nil
   :hook (((c-ts-mode c++-ts-mode) . gcca/eglot-ensure-clangd)
-         (python-ts-mode . gcca/eglot-ensure-python)
+         ((python-mode python-ts-mode) . gcca/eglot-ensure-python)
          (go-ts-mode . gcca/eglot-ensure-gopls)
          ((js-ts-mode typescript-ts-mode tsx-ts-mode) . gcca/eglot-ensure-typescript))
   :config
   (setq eglot-autoshutdown t
         ;; Allow M-. into files outside the project (e.g. node_modules / deps).
         eglot-extend-to-xref t)
+  (setq-default eglot-workspace-configuration
+                #'gcca/eglot-workspace-configuration)
+  (cl-defmethod eglot-client-capabilities :around (_server)
+    (let ((capabilities (cl-call-next-method)))
+      (plist-put (plist-get capabilities :workspace)
+                 :didChangeWatchedFiles '(:dynamicRegistration :json-false))
+      capabilities))
   ;; (set-face-attribute 'eglot-inlay-hint-face nil
   ;;                     :foreground "#34384c"
   ;;                     :background 'unspecified)
