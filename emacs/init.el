@@ -90,14 +90,16 @@
 
 ;;;; PATH (GUI Emacs does not load fish config.fish)
 
-;; Bun installs to ~/.bun/bin, the default OPAM switch to ~/.opam/default/bin,
-;; and Homebrew tools to /opt/homebrew/bin.  Without these, `executable-find'
-;; misses language tools and their Eglot servers.  Prepend in listed priority
-;; order and de-duplicate, so reloading init.el never reorders precedence or
-;; stacks duplicates onto exec-path/$PATH.
+;; Bun installs to ~/.bun/bin, the default OPAM switch to
+;; ~/.opam/default/bin, `cargo install' to ~/.cargo/bin, and Homebrew tools
+;; to /opt/homebrew/bin.  Without these, `executable-find' misses language
+;; tools and their Eglot servers.  Prepend in listed priority order and
+;; de-duplicate, so reloading init.el never reorders precedence or stacks
+;; duplicates onto exec-path/$PATH.
 (let ((dirs (seq-filter #'file-directory-p
                         (list (expand-file-name "~/.bun/bin")
                               (expand-file-name "~/.opam/default/bin")
+                              (expand-file-name "~/.cargo/bin")
                               "/opt/homebrew/bin"
                               "/opt/homebrew/sbin"
                               "/usr/local/bin"))))
@@ -496,6 +498,41 @@ walk the history."
 ;; (not via Customize) so relocating Custom to custom.el cannot drop it.
 (setq custom-safe-themes t)
 
+(defvar gcca/transparent-background--saved-default-face-override nil
+  "The `default' face override saved before enabling transparency.")
+
+(defvar gcca/transparent-background--saved-p nil
+  "Whether a `default' face override is saved for transparency mode.")
+
+(define-minor-mode gcca/transparent-background-mode
+  "Show the terminal's background through Emacs terminal frames.
+
+This global mode makes only the `default' face background transparent,
+and only on terminal frames.  Graphical frames and explicitly styled UI
+faces are unaffected.  The override persists across theme changes and
+also applies to terminal frames created while the mode is enabled."
+  :global t
+  :init-value nil
+  (if gcca/transparent-background-mode
+      (progn
+        (unless gcca/transparent-background--saved-p
+          (setq gcca/transparent-background--saved-default-face-override
+                (copy-tree (get 'default 'face-override-spec))
+                gcca/transparent-background--saved-p t))
+        (face-spec-set
+         'default
+         (cons '(((type tty)) :background "unspecified")
+               (copy-tree
+                gcca/transparent-background--saved-default-face-override))
+         'face-override-spec))
+    (when gcca/transparent-background--saved-p
+      (face-spec-set
+       'default
+       gcca/transparent-background--saved-default-face-override
+       'face-override-spec)
+      (setq gcca/transparent-background--saved-default-face-override nil
+            gcca/transparent-background--saved-p nil))))
+
 (use-package doom-themes
   :demand t
   :config
@@ -513,127 +550,6 @@ walk the history."
 (use-package solarized-theme)
 (use-package gruvbox-theme)
 (use-package zenburn-theme)
-
-;;;;; Scheduled theme
-
-(defgroup gcca-theme-schedule nil
-  "Switch themes according to the local time."
-  :group 'faces
-  :prefix "gcca/theme-")
-
-(defun gcca/theme-schedule--custom-set (symbol value)
-  "Set SYMBOL to VALUE and refresh the running theme schedule."
-  (set-default symbol value)
-  ;; During startup the timer is created only after custom.el is loaded, so
-  ;; all four saved options are restored before the schedule is first applied.
-  (when (and (boundp 'gcca/theme-schedule-timer)
-             (timerp gcca/theme-schedule-timer))
-    (gcca/theme-schedule-start)))
-
-(defcustom gcca/theme-day 'tokyo-night
-  "Theme enabled during the daytime interval."
-  :type 'symbol
-  :set #'gcca/theme-schedule--custom-set
-  :group 'gcca-theme-schedule)
-
-(defcustom gcca/theme-night 'doom-outrun-electric
-  "Theme enabled outside the daytime interval."
-  :type 'symbol
-  :set #'gcca/theme-schedule--custom-set
-  :group 'gcca-theme-schedule)
-
-(defcustom gcca/theme-day-start "06:39"
-  "Local time at which `gcca/theme-day' becomes active.
-Use the 24-hour HH:MM format."
-  :type '(string :tag "Local time (HH:MM)")
-  :set #'gcca/theme-schedule--custom-set
-  :group 'gcca-theme-schedule)
-
-(defcustom gcca/theme-day-end "16:19"
-  "Local time at which `gcca/theme-night' becomes active.
-Use the 24-hour HH:MM format."
-  :type '(string :tag "Local time (HH:MM)")
-  :set #'gcca/theme-schedule--custom-set
-  :group 'gcca-theme-schedule)
-
-(defvar gcca/theme-schedule-timer nil
-  "Timer for the next scheduled theme change.")
-
-(defun gcca/theme-schedule--minutes (value)
-  "Convert an HH:MM string VALUE to minutes after midnight."
-  (unless (and (stringp value)
-               (string-match
-                "\\`\\([01][0-9]\\|2[0-3]\\):\\([0-5][0-9]\\)\\'"
-                value))
-    (user-error "Theme schedule time must use 24-hour HH:MM format: %S"
-                value))
-  (+ (* 60 (string-to-number (match-string 1 value)))
-     (string-to-number (match-string 2 value))))
-
-(defun gcca/theme-schedule--theme-at (&optional time)
-  "Return the scheduled theme at local TIME, or at the current time."
-  (let* ((decoded (decode-time time))
-         (now (+ (* 60 (nth 2 decoded)) (nth 1 decoded)))
-         (start (gcca/theme-schedule--minutes gcca/theme-day-start))
-         (end (gcca/theme-schedule--minutes gcca/theme-day-end)))
-    (unless (< start end)
-      (user-error "Day theme start must be earlier than its end"))
-    (if (and (>= now start) (< now end))
-        gcca/theme-day
-      gcca/theme-night)))
-
-(defun gcca/theme-schedule--next-occurrence (minutes now)
-  "Return the next occurrence of MINUTES after midnight following NOW."
-  (let* ((decoded (decode-time now))
-         (minute (% minutes 60))
-         (hour (/ minutes 60))
-         (day (nth 3 decoded))
-         (month (nth 4 decoded))
-         (year (nth 5 decoded))
-         (today (encode-time 0 minute hour day month year)))
-    (if (time-less-p now today)
-        today
-      ;; `encode-time' normalizes an overflowing day into the next month/year.
-      (encode-time 0 minute hour (1+ day) month year))))
-
-(defun gcca/theme-schedule--next-boundary (&optional time)
-  "Return the next day/night boundary following TIME."
-  (let* ((now (or time (current-time)))
-         (start (gcca/theme-schedule--minutes gcca/theme-day-start))
-         (end (gcca/theme-schedule--minutes gcca/theme-day-end))
-         (next-start (gcca/theme-schedule--next-occurrence start now))
-         (next-end (gcca/theme-schedule--next-occurrence end now)))
-    (if (time-less-p next-start next-end) next-start next-end)))
-
-(defun gcca/theme-schedule-apply ()
-  "Apply the theme selected by the current schedule."
-  (interactive)
-  (let ((theme (gcca/theme-schedule--theme-at)))
-    ;; Load first so a missing/broken new theme does not discard the working
-    ;; theme.  Then remove every other theme to prevent face layering.
-    (unless (memq theme custom-enabled-themes)
-      (load-theme theme t))
-    (dolist (enabled (copy-sequence custom-enabled-themes))
-      (unless (eq enabled theme)
-        (disable-theme enabled)))))
-
-(defun gcca/theme-schedule-start ()
-  "Apply the scheduled theme and arrange the next exact boundary change."
-  (interactive)
-  ;; Validate both values before replacing a working timer.
-  (let ((start (gcca/theme-schedule--minutes gcca/theme-day-start))
-        (end (gcca/theme-schedule--minutes gcca/theme-day-end)))
-    (unless (< start end)
-      (user-error "Day theme start must be earlier than its end")))
-  (when (timerp gcca/theme-schedule-timer)
-    (cancel-timer gcca/theme-schedule-timer))
-  (setq gcca/theme-schedule-timer nil)
-  (gcca/theme-schedule-apply)
-  ;; Use a one-shot timer and calculate the following boundary again when it
-  ;; fires.  This keeps local wall-clock times correct across clock changes.
-  (setq gcca/theme-schedule-timer
-        (run-at-time (gcca/theme-schedule--next-boundary) nil
-                     #'gcca/theme-schedule-start)))
 
 ;;;; TODO/FIXME highlighting
 
@@ -683,6 +599,10 @@ With no PROGRAMS, always call `eglot-ensure'."
 (defun gcca/eglot-ensure-gopls ()
   "Start Eglot for Go when gopls is available."
   (gcca/eglot-ensure-if "gopls"))
+
+(defun gcca/eglot-ensure-rust-analyzer ()
+  "Start Eglot for Rust when rust-analyzer is available."
+  (gcca/eglot-ensure-if "rust-analyzer"))
 
 (defun gcca/eglot-ensure-ocamllsp ()
   "Start Eglot for OCaml when ocamllsp is available."
@@ -1018,6 +938,75 @@ The formatter receives no style or indentation overrides.  The
          ("\\.nims\\'" . nim-mode)
          ("\\.nimble\\'" . nim-mode))
   :hook (nim-mode . gcca/eglot-ensure-nimlsp))
+
+;;;; Rust
+
+(defvar gcca/rust-default-edition "2024"
+  "Edition passed to rustfmt when no Cargo.toml declares one.")
+
+(defun gcca/rust-edition ()
+  "Return the Rust edition to format the current buffer with.
+rustfmt reading stdin consults no Cargo.toml and falls back to the 2015
+edition, which cannot even parse `async fn'.  Walk up to the first
+Cargo.toml that states an edition: a workspace member that inherits one
+\(`edition.workspace = true') states none of its own, so the search
+continues up to the workspace root."
+  (let ((dir (or (and buffer-file-name (file-name-directory buffer-file-name))
+                 default-directory))
+        (edition nil))
+    (while (and dir (not edition))
+      (let ((cargo (expand-file-name "Cargo.toml" dir)))
+        (when (file-readable-p cargo)
+          (with-temp-buffer
+            (insert-file-contents cargo)
+            (goto-char (point-min))
+            (when (re-search-forward
+                   "^[ \t]*edition[ \t]*=[ \t]*\"\\([0-9]+\\)\"" nil t)
+              (setq edition (match-string 1))))))
+      (setq dir (let ((parent (file-name-directory (directory-file-name dir))))
+                  (unless (equal parent dir) parent))))
+    (or edition gcca/rust-default-edition)))
+
+(defun gcca/rustfmt-buffer-if-available ()
+  "Format the current buffer with rustfmt when available.
+Only the edition is passed, so a project rustfmt.toml still applies."
+  (when-let* ((rustfmt (executable-find "rustfmt")))
+    (let ((out (generate-new-buffer " *rustfmt*")))
+      (unwind-protect
+          (let ((status (call-process-region
+                         (point-min) (point-max)
+                         rustfmt nil out nil
+                         "--edition" (gcca/rust-edition)
+                         "--emit" "stdout"
+                         ;; call-process-region merges stderr into OUT, so
+                         ;; rustfmt warnings would be spliced into the buffer
+                         ;; along with the formatted text; --quiet drops them.
+                         "--quiet")))
+            (if (zerop status)
+                (replace-buffer-contents out)
+              (message "rustfmt failed (%s): %s"
+                       status
+                       (with-current-buffer out (buffer-string)))))
+        (when (buffer-name out)
+          (kill-buffer out))))))
+
+(defun gcca/enable-rustfmt-on-save ()
+  "Format Rust buffers with rustfmt before saving."
+  (add-hook 'before-save-hook #'gcca/rustfmt-buffer-if-available nil t))
+
+(defun gcca/rust-set-compile-command ()
+  "Set `compile-command' for Rust buffers."
+  (setq-local compile-command "cargo test --color never"))
+
+;; rust-ts-mode is built in and its grammar comes from treesit-auto.  Eglot's
+;; own `eglot-server-programs' already maps rust-ts-mode to rust-analyzer, so
+;; unlike cmake/yaml/nim no server entry is needed -- only the guarded hook.
+(use-package rust-ts-mode
+  :straight nil
+  :mode "\\.rs\\'"
+  :hook ((rust-ts-mode . gcca/eglot-ensure-rust-analyzer)
+         (rust-ts-mode . gcca/enable-rustfmt-on-save)
+         (rust-ts-mode . gcca/rust-set-compile-command)))
 
 ;;;; SQL
 
@@ -1375,7 +1364,3 @@ default message is on disk even when the buffer looks unmodified."
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (when (file-exists-p custom-file)
   (load custom-file nil 'nomessage))
-
-;; Start only after Custom has restored the saved schedule options.  Use
-;; `M-x customize-group RET gcca-theme-schedule' to edit them.
-(gcca/theme-schedule-start)

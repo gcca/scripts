@@ -28,7 +28,7 @@ if status is-interactive
         set -l now (date +%H%M)
         set -l theme
         if test $now -ge 639 -a $now -lt 1619
-            set theme tokyonight
+            set theme Chalkboard
         else
             set theme BlueBerryPie
         end
@@ -75,7 +75,7 @@ if status is-interactive
 
     #: {{{ Bat
     if command -q bat
-        set -x BAT_THEME DarkNeon
+        set -x BAT_THEME 'Monokai Extended Bright'
         set -x BAT_STYLE 'numbers,changes,header'
         alias cat='bat'
     end
