@@ -549,7 +549,7 @@ Use the 24-hour HH:MM format."
   :set #'gcca/theme-schedule--custom-set
   :group 'gcca-theme-schedule)
 
-(defcustom gcca/theme-day-end "16:19"
+(defcustom gcca/theme-day-end "18:19"
   "Local time at which `gcca/theme-night' becomes active.
 Use the 24-hour HH:MM format."
   :type '(string :tag "Local time (HH:MM)")
