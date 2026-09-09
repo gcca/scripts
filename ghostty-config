@@ -29,12 +29,12 @@ window-width             = 109
 window-height            = 30
 window-position-x        = 340
 window-position-y        = 90
-window-inherit-font-size = false
+window-inherit-font-size = true
 
 quit-after-last-window-closed = true
 
 font-family            = "Iosevka Term SS08"
-#font-family            = "IosevkaTerm NFM Medium"
+# font-family            = "IosevkaTerm Nerd Font Mono"
 # font-style             = Medium
 # font-style-bold        = Bold
 # font-style-italic      = "Medium Italic"
