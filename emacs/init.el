@@ -90,14 +90,16 @@
 
 ;;;; PATH (GUI Emacs does not load fish config.fish)
 
-;; Bun installs to ~/.bun/bin, the default OPAM switch to ~/.opam/default/bin,
-;; and Homebrew tools to /opt/homebrew/bin.  Without these, `executable-find'
-;; misses language tools and their Eglot servers.  Prepend in listed priority
-;; order and de-duplicate, so reloading init.el never reorders precedence or
-;; stacks duplicates onto exec-path/$PATH.
+;; Bun installs to ~/.bun/bin, the default OPAM switch to
+;; ~/.opam/default/bin, `cargo install' to ~/.cargo/bin, and Homebrew tools
+;; to /opt/homebrew/bin.  Without these, `executable-find' misses language
+;; tools and their Eglot servers.  Prepend in listed priority order and
+;; de-duplicate, so reloading init.el never reorders precedence or stacks
+;; duplicates onto exec-path/$PATH.
 (let ((dirs (seq-filter #'file-directory-p
                         (list (expand-file-name "~/.bun/bin")
                               (expand-file-name "~/.opam/default/bin")
+                              (expand-file-name "~/.cargo/bin")
                               "/opt/homebrew/bin"
                               "/opt/homebrew/sbin"
                               "/usr/local/bin"))))
@@ -684,6 +686,10 @@ With no PROGRAMS, always call `eglot-ensure'."
   "Start Eglot for Go when gopls is available."
   (gcca/eglot-ensure-if "gopls"))
 
+(defun gcca/eglot-ensure-rust-analyzer ()
+  "Start Eglot for Rust when rust-analyzer is available."
+  (gcca/eglot-ensure-if "rust-analyzer"))
+
 (defun gcca/eglot-ensure-ocamllsp ()
   "Start Eglot for OCaml when ocamllsp is available."
   (gcca/eglot-ensure-if "ocamllsp"))
@@ -1018,6 +1024,75 @@ The formatter receives no style or indentation overrides.  The
          ("\\.nims\\'" . nim-mode)
          ("\\.nimble\\'" . nim-mode))
   :hook (nim-mode . gcca/eglot-ensure-nimlsp))
+
+;;;; Rust
+
+(defvar gcca/rust-default-edition "2024"
+  "Edition passed to rustfmt when no Cargo.toml declares one.")
+
+(defun gcca/rust-edition ()
+  "Return the Rust edition to format the current buffer with.
+rustfmt reading stdin consults no Cargo.toml and falls back to the 2015
+edition, which cannot even parse `async fn'.  Walk up to the first
+Cargo.toml that states an edition: a workspace member that inherits one
+\(`edition.workspace = true') states none of its own, so the search
+continues up to the workspace root."
+  (let ((dir (or (and buffer-file-name (file-name-directory buffer-file-name))
+                 default-directory))
+        (edition nil))
+    (while (and dir (not edition))
+      (let ((cargo (expand-file-name "Cargo.toml" dir)))
+        (when (file-readable-p cargo)
+          (with-temp-buffer
+            (insert-file-contents cargo)
+            (goto-char (point-min))
+            (when (re-search-forward
+                   "^[ \t]*edition[ \t]*=[ \t]*\"\\([0-9]+\\)\"" nil t)
+              (setq edition (match-string 1))))))
+      (setq dir (let ((parent (file-name-directory (directory-file-name dir))))
+                  (unless (equal parent dir) parent))))
+    (or edition gcca/rust-default-edition)))
+
+(defun gcca/rustfmt-buffer-if-available ()
+  "Format the current buffer with rustfmt when available.
+Only the edition is passed, so a project rustfmt.toml still applies."
+  (when-let* ((rustfmt (executable-find "rustfmt")))
+    (let ((out (generate-new-buffer " *rustfmt*")))
+      (unwind-protect
+          (let ((status (call-process-region
+                         (point-min) (point-max)
+                         rustfmt nil out nil
+                         "--edition" (gcca/rust-edition)
+                         "--emit" "stdout"
+                         ;; call-process-region merges stderr into OUT, so
+                         ;; rustfmt warnings would be spliced into the buffer
+                         ;; along with the formatted text; --quiet drops them.
+                         "--quiet")))
+            (if (zerop status)
+                (replace-buffer-contents out)
+              (message "rustfmt failed (%s): %s"
+                       status
+                       (with-current-buffer out (buffer-string)))))
+        (when (buffer-name out)
+          (kill-buffer out))))))
+
+(defun gcca/enable-rustfmt-on-save ()
+  "Format Rust buffers with rustfmt before saving."
+  (add-hook 'before-save-hook #'gcca/rustfmt-buffer-if-available nil t))
+
+(defun gcca/rust-set-compile-command ()
+  "Set `compile-command' for Rust buffers."
+  (setq-local compile-command "cargo test --color never"))
+
+;; rust-ts-mode is built in and its grammar comes from treesit-auto.  Eglot's
+;; own `eglot-server-programs' already maps rust-ts-mode to rust-analyzer, so
+;; unlike cmake/yaml/nim no server entry is needed -- only the guarded hook.
+(use-package rust-ts-mode
+  :straight nil
+  :mode "\\.rs\\'"
+  :hook ((rust-ts-mode . gcca/eglot-ensure-rust-analyzer)
+         (rust-ts-mode . gcca/enable-rustfmt-on-save)
+         (rust-ts-mode . gcca/rust-set-compile-command)))
 
 ;;;; SQL
 
