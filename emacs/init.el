@@ -91,8 +91,9 @@
 ;;;; PATH (GUI Emacs does not load fish config.fish)
 
 ;; Bun installs to ~/.bun/bin, the default OPAM switch to
-;; ~/.opam/default/bin, `cargo install' to ~/.cargo/bin, and Homebrew tools
-;; to /opt/homebrew/bin.  Without these, `executable-find' misses language
+;; ~/.opam/default/bin, `cargo install' to ~/.cargo/bin, nimble to
+;; ~/.nimble/bin, `go install' to ~/go/bin, and Homebrew tools to
+;; /opt/homebrew/bin.  Without these, `executable-find' misses language
 ;; tools and their Eglot servers.  Prepend in listed priority order and
 ;; de-duplicate, so reloading init.el never reorders precedence or stacks
 ;; duplicates onto exec-path/$PATH.
@@ -100,6 +101,8 @@
                         (list (expand-file-name "~/.bun/bin")
                               (expand-file-name "~/.opam/default/bin")
                               (expand-file-name "~/.cargo/bin")
+                              (expand-file-name "~/.nimble/bin")
+                              (expand-file-name "~/go/bin")
                               "/opt/homebrew/bin"
                               "/opt/homebrew/sbin"
                               "/usr/local/bin"))))
@@ -275,6 +278,46 @@ relative to the project root (falling back to the absolute path)."
 (add-hook 'prog-mode-hook #'gcca/enable-whitespace-cleanup)
 (add-hook 'conf-mode-hook #'gcca/enable-whitespace-cleanup)
 (setq vc-follow-symlinks t)
+
+;;;; Format on save
+
+;; Each language supplies a function returning (PROGRAM . ARGS), or nil
+;; when its formatter is missing.  The buffer is piped through the
+;; command; output replaces the buffer only on exit status 0.
+(defvar-local gcca/format-command nil
+  "Function returning the formatter command (PROGRAM . ARGS), or nil.")
+
+(defun gcca/format-buffer ()
+  "Format the current buffer with `gcca/format-command', if any.
+Stdout replaces the buffer on success; stderr goes to a temp file so
+diagnostics never end up in the code."
+  (interactive)
+  (when-let* ((command (and gcca/format-command
+                            (funcall gcca/format-command))))
+    (let ((out (generate-new-buffer " *format*"))
+          (err (make-temp-file "gcca-format-")))
+      (unwind-protect
+          (let ((status (apply #'call-process-region
+                               (point-min) (point-max)
+                               (car command) nil (list out err) nil
+                               (cdr command))))
+            (if (eq status 0)
+                (replace-buffer-contents out)
+              (message "%s failed (%s): %s"
+                       (file-name-nondirectory (car command))
+                       status
+                       (with-temp-buffer
+                         (insert-file-contents err)
+                         (goto-char (point-min))
+                         (buffer-substring-no-properties
+                          (point) (line-end-position))))))
+        (kill-buffer out)
+        (delete-file err)))))
+
+(defun gcca/enable-format-on-save (command-fn)
+  "Format the current buffer with COMMAND-FN's command before saving."
+  (setq gcca/format-command command-fn)
+  (add-hook 'before-save-hook #'gcca/format-buffer nil t))
 
 ;;; Build and compilation
 
@@ -620,6 +663,10 @@ With no PROGRAMS, always call `eglot-ensure'."
   "Start Eglot for Nim when nimlsp is available."
   (gcca/eglot-ensure-if "nimlsp"))
 
+(defun gcca/eglot-ensure-sourcekit-lsp ()
+  "Start Eglot for Swift when sourcekit-lsp is available."
+  (gcca/eglot-ensure-if "sourcekit-lsp"))
+
 (defun gcca/eglot-ensure-cmake-ls ()
   "Start Eglot for CMake when cmake-language-server is available."
   (gcca/eglot-ensure-if "cmake-language-server"))
@@ -785,6 +832,8 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   (add-to-list 'eglot-server-programs
                '(nim-mode . ("nimlsp")))
   (add-to-list 'eglot-server-programs
+               '(swift-mode . ("sourcekit-lsp")))
+  (add-to-list 'eglot-server-programs
                '(c3-ts-mode . gcca/c3lsp-contact))
   ;; Keep :language-id plists — bare mode symbols shadow eglot's defaults
   ;; and derive ids like "tsx"/"js", so tsserver won't resolve JSX tags (M-.).
@@ -816,9 +865,25 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 
 ;;;; Go
 
+(defun gcca/gofmt-command ()
+  "Return goimports (preferred) or gofmt, or nil when neither exists."
+  (when-let* ((fmt (or (executable-find "goimports")
+                       (executable-find "gofmt"))))
+    (list fmt)))
+
+(defun gcca/go-enable-format ()
+  "Format Go buffers with goimports/gofmt before saving."
+  (gcca/enable-format-on-save #'gcca/gofmt-command))
+
+(defun gcca/go-set-compile-command ()
+  "Set `compile-command' for Go buffers."
+  (setq-local compile-command "go test ./..."))
+
 (use-package go-ts-mode
   :straight nil
-  :mode "\\.go\\'")
+  :mode "\\.go\\'"
+  :hook ((go-ts-mode . gcca/go-enable-format)
+         (go-ts-mode . gcca/go-set-compile-command)))
 
 ;;;; OCaml
 
@@ -864,13 +929,48 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   "Set `compile-command' for JS/TS buffers (Bun)."
   (setq-local compile-command "bun run test"))
 
+(defun gcca/js-format-command ()
+  "Return the project's biome or prettier command, or nil.
+Only project-local node_modules/.bin tools are used, so saving never
+triggers a bunx download or applies a formatter the project did not pick."
+  (let* ((root (gcca/typescript-project-root))
+         (bin (expand-file-name "node_modules/.bin/" root))
+         (file (or buffer-file-name
+                   (expand-file-name "stdin.ts" default-directory)))
+         (biome (expand-file-name "biome" bin))
+         (prettier (expand-file-name "prettier" bin)))
+    (cond
+     ((file-executable-p biome)
+      (list biome "format" (concat "--stdin-file-path=" file)))
+     ((file-executable-p prettier)
+      (list prettier "--stdin-filepath" file)))))
+
+(defun gcca/js-enable-format ()
+  "Format JS/TS buffers with the project's biome/prettier before saving."
+  (gcca/enable-format-on-save #'gcca/js-format-command))
+
 (dolist (hook '(js-ts-mode-hook typescript-ts-mode-hook tsx-ts-mode-hook))
-  (add-hook hook #'gcca/js-set-compile-command))
+  (add-hook hook #'gcca/js-set-compile-command)
+  (add-hook hook #'gcca/js-enable-format))
 
 ;;;; Python
 
+(defun gcca/ruff-format-command ()
+  "Return the ruff format command, or nil when ruff is unavailable.
+`--stdin-filename' lets ruff find the project's pyproject.toml/ruff.toml."
+  (when-let* ((ruff (executable-find "ruff")))
+    (append (list ruff "format")
+            (and buffer-file-name
+                 (list "--stdin-filename" buffer-file-name))
+            (list "-"))))
+
+(defun gcca/python-enable-format ()
+  "Format Python buffers with ruff before saving."
+  (gcca/enable-format-on-save #'gcca/ruff-format-command))
+
 (use-package python
   :straight nil
+  :hook ((python-mode python-ts-mode) . gcca/python-enable-format)
   :mode ("\\.py[iw]?\\'" . python-ts-mode)
   :interpreter (("python" . python-ts-mode)
                 ("python3" . python-ts-mode)))
@@ -888,31 +988,18 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
 
 ;;;; C3
 
-(defun gcca/c3fmt-buffer-if-available ()
-  "Format the current buffer with c3fmt when available.
+(defun gcca/c3fmt-command ()
+  "Return the c3fmt command, or nil when c3fmt is unavailable.
 The formatter receives no style or indentation overrides.  The
 `--stdin-filepath' argument lets c3fmt discover any project config."
   (when-let* ((c3fmt (gcca/c3-executable "c3fmt")))
-    (let ((out (generate-new-buffer " *c3fmt*")))
-      (unwind-protect
-          (let* ((path (or buffer-file-name default-directory))
-                 (status (call-process-region
-                          (point-min) (point-max)
-                          c3fmt nil out nil
-                          "--stdin"
-                          "--stdout"
-                          (concat "--stdin-filepath=" path))))
-            (if (zerop status)
-                (replace-buffer-contents out)
-              (message "c3fmt failed (%s): %s"
-                       status
-                       (with-current-buffer out (buffer-string)))))
-        (when (buffer-name out)
-          (kill-buffer out))))))
+    (list c3fmt "--stdin" "--stdout"
+          (concat "--stdin-filepath="
+                  (or buffer-file-name default-directory)))))
 
-(defun gcca/enable-c3fmt-on-save ()
+(defun gcca/c3-enable-format ()
   "Format C3 buffers with c3fmt before saving."
-  (add-hook 'before-save-hook #'gcca/c3fmt-buffer-if-available nil t))
+  (gcca/enable-format-on-save #'gcca/c3fmt-command))
 
 (defun gcca/c3-set-compile-command ()
   "Set `compile-command' for C3 buffers."
@@ -925,7 +1012,7 @@ The formatter receives no style or indentation overrides.  The
   :straight (:host github :repo "c3lang/c3-ts-mode")
   :mode "\\.c3[it]?\\'"
   :hook ((c3-ts-mode . gcca/eglot-ensure-c3lsp)
-         (c3-ts-mode . gcca/enable-c3fmt-on-save)
+         (c3-ts-mode . gcca/c3-enable-format)
          (c3-ts-mode . gcca/c3-set-compile-command))
   :init
   (add-to-list 'treesit-language-source-alist
@@ -967,32 +1054,15 @@ continues up to the workspace root."
                   (unless (equal parent dir) parent))))
     (or edition gcca/rust-default-edition)))
 
-(defun gcca/rustfmt-buffer-if-available ()
-  "Format the current buffer with rustfmt when available.
+(defun gcca/rustfmt-command ()
+  "Return the rustfmt command, or nil when rustfmt is unavailable.
 Only the edition is passed, so a project rustfmt.toml still applies."
   (when-let* ((rustfmt (executable-find "rustfmt")))
-    (let ((out (generate-new-buffer " *rustfmt*")))
-      (unwind-protect
-          (let ((status (call-process-region
-                         (point-min) (point-max)
-                         rustfmt nil out nil
-                         "--edition" (gcca/rust-edition)
-                         "--emit" "stdout"
-                         ;; call-process-region merges stderr into OUT, so
-                         ;; rustfmt warnings would be spliced into the buffer
-                         ;; along with the formatted text; --quiet drops them.
-                         "--quiet")))
-            (if (zerop status)
-                (replace-buffer-contents out)
-              (message "rustfmt failed (%s): %s"
-                       status
-                       (with-current-buffer out (buffer-string)))))
-        (when (buffer-name out)
-          (kill-buffer out))))))
+    (list rustfmt "--edition" (gcca/rust-edition) "--emit" "stdout")))
 
-(defun gcca/enable-rustfmt-on-save ()
+(defun gcca/rust-enable-format ()
   "Format Rust buffers with rustfmt before saving."
-  (add-hook 'before-save-hook #'gcca/rustfmt-buffer-if-available nil t))
+  (gcca/enable-format-on-save #'gcca/rustfmt-command))
 
 (defun gcca/rust-set-compile-command ()
   "Set `compile-command' for Rust buffers."
@@ -1005,8 +1075,60 @@ Only the edition is passed, so a project rustfmt.toml still applies."
   :straight nil
   :mode "\\.rs\\'"
   :hook ((rust-ts-mode . gcca/eglot-ensure-rust-analyzer)
-         (rust-ts-mode . gcca/enable-rustfmt-on-save)
+         (rust-ts-mode . gcca/rust-enable-format)
          (rust-ts-mode . gcca/rust-set-compile-command)))
+
+;;;; Swift
+
+(defvar gcca/swift-format-executable 'unset
+  "Cached swift-format path, nil when unavailable, `unset' before lookup.")
+
+(defun gcca/swift-format-executable ()
+  "Return the swift-format executable, or nil.
+Xcode ships swift-format inside its toolchain, off PATH; fall back to
+`xcrun --find' once and cache the result."
+  (when (eq gcca/swift-format-executable 'unset)
+    (setq gcca/swift-format-executable
+          (or (executable-find "swift-format")
+              (let ((path (and (executable-find "xcrun")
+                               (string-trim
+                                (shell-command-to-string
+                                 "xcrun --find swift-format 2>/dev/null")))))
+                (and path (file-executable-p path) path)))))
+  gcca/swift-format-executable)
+
+(defun gcca/swift-format-command ()
+  "Return the swift-format command, or nil when swift-format is unavailable.
+The formatter receives no style overrides.  For a file-visiting buffer,
+`--assume-filename' lets swift-format discover a project .swift-format."
+  (when-let* ((swift-format (gcca/swift-format-executable)))
+    (append (list swift-format)
+            (and buffer-file-name
+                 (list "--assume-filename" buffer-file-name))
+            ;; Bare stdin (no `-') is deprecated.
+            (list "-"))))
+
+(defun gcca/swift-enable-format ()
+  "Format Swift buffers with swift-format before saving."
+  (gcca/enable-format-on-save #'gcca/swift-format-command))
+
+(defun gcca/swift-set-compile-command ()
+  "Set `compile-command' for Swift buffers (SwiftPM)."
+  (setq-local compile-command "swift test"))
+
+;; No built-in Swift mode and Eglot ships no Swift entry, so the server
+;; mapping lives in the Eglot block above.  sourcekit-lsp is the xcrun
+;; shim in /usr/bin on macOS.  SwiftPM packages work as-is; Xcode
+;; projects need a buildServer.json from `xcode-build-server'.
+(use-package swift-mode
+  :mode "\\.swift\\'"
+  :hook ((swift-mode . gcca/eglot-ensure-sourcekit-lsp)
+         (swift-mode . gcca/swift-enable-format)
+         (swift-mode . gcca/swift-set-compile-command))
+  :config
+  ;; Match swift-format's default 2-space indentation, so saving does not
+  ;; re-indent what was just typed.
+  (setq swift-mode:basic-offset 2))
 
 ;;;; SQL
 
@@ -1080,30 +1202,18 @@ Only the edition is passed, so a project rustfmt.toml still applies."
   (local-set-key (kbd "<tab>") #'gcca/c++-indent-for-tab-command)
   (local-set-key (kbd "RET") #'gcca/c++-newline-and-indent))
 
-(defun gcca/clang-format-buffer-if-available ()
-  "Format the current buffer with clang-format when available.
+(defun gcca/clang-format-command ()
+  "Return the clang-format command, or nil when clang-format is unavailable.
 The formatter receives no style or indentation overrides.  For a
 file-visiting buffer, `--assume-filename' enables project config discovery."
   (when-let* ((clang-format (executable-find "clang-format")))
-    (let ((out (generate-new-buffer " *clang-format*")))
-      (unwind-protect
-          (let* ((args
-                  (and buffer-file-name
-                       (list (concat "--assume-filename="
-                                     buffer-file-name))))
-                 (status
-                  (apply #'call-process-region
-                         (point-min) (point-max)
-                         clang-format nil out nil args)))
-            (if (zerop status)
-                (replace-buffer-contents out)
-              (message "clang-format failed with status %s" status)))
-        (when (buffer-name out)
-          (kill-buffer out))))))
+    (cons clang-format
+          (and buffer-file-name
+               (list (concat "--assume-filename=" buffer-file-name))))))
 
-(defun gcca/enable-clang-format-on-save ()
-  "Format C/C++ buffers before saving."
-  (add-hook 'before-save-hook #'gcca/clang-format-buffer-if-available nil t))
+(defun gcca/c-enable-format ()
+  "Format C/C++ buffers with clang-format before saving."
+  (gcca/enable-format-on-save #'gcca/clang-format-command))
 
 (defun gcca/c-set-compile-command ()
   "Set `compile-command' for C/C++ buffers."
@@ -1127,7 +1237,7 @@ file-visiting buffer, `--assume-filename' enables project config discovery."
          ("\\.tpp\\'" . c++-ts-mode)
          ("\\.inl\\'" . c++-ts-mode))
   :hook ((c++-ts-mode . gcca/c++-enable-raw-string-indentation)
-         ((c-ts-mode c++-ts-mode) . gcca/enable-clang-format-on-save)
+         ((c-ts-mode c++-ts-mode) . gcca/c-enable-format)
          ((c-ts-mode c++-ts-mode) . gcca/c-set-compile-command)))
 
 ;;;; YAML

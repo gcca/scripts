@@ -50,3 +50,9 @@
   zero-style = normal
 [include]
 	path = ~/.config/delta/themes.gitconfig
+[credential "https://origin.cursor.com/git"]
+	helper = 
+	helper = !/Users/gcca/.local/bin/origin credential-helper
+[credential "https://origin.cursor.com"]
+	helper = 
+	helper = !/Users/gcca/.local/bin/origin credential-helper
