@@ -45,7 +45,3 @@ desktop-notifications = false
 bell-features = audio,title,attention
 
 macos-option-as-alt = left
-
-quick-terminal-position = top
-quick-terminal-size     = 35%
-keybind = global:cmd+backquote=toggle_quick_terminal
