@@ -3,7 +3,7 @@
 
 command = direct:/opt/homebrew/bin/fish -lP
 
-theme = light:Mirage,dark:Ultra Dark
+theme = light: TokyoNight Night,dark: Firefly Traditional
 
 scrollback-limit = 50000000
 
