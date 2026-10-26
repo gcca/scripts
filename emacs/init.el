@@ -875,15 +875,16 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   "Format Go buffers with goimports/gofmt before saving."
   (gcca/enable-format-on-save #'gcca/gofmt-command))
 
-(defun gcca/go-set-compile-command ()
-  "Set `compile-command' for Go buffers."
-  (setq-local compile-command "go test ./..."))
+(defun gcca/go-setup ()
+  "Use one tab per indent level, like gofmt, and set `compile-command'."
+  (setq-local go-ts-indent-offset tab-width
+              compile-command "go test ./..."))
 
 (use-package go-ts-mode
   :straight nil
   :mode "\\.go\\'"
   :hook ((go-ts-mode . gcca/go-enable-format)
-         (go-ts-mode . gcca/go-set-compile-command)))
+         (go-ts-mode . gcca/go-setup)))
 
 ;;;; OCaml
 
