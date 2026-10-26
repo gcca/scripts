@@ -45,3 +45,6 @@ desktop-notifications = false
 bell-features = audio,title,attention
 
 macos-option-as-alt = left
+
+background-opacity = 0.75
+background-blur = macos-glass-clear
