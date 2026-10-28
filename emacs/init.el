@@ -1272,6 +1272,11 @@ file-visiting buffer, `--assume-filename' enables project config discovery."
 (use-package protobuf-mode
   :mode "\\.proto\\'")
 
+;;;; FlatBuffers
+
+(use-package flatbuffers-mode
+  :mode "\\.fbs\\'")
+
 ;;;; Web
 
 (use-package web-mode
