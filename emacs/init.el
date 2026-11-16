@@ -609,6 +609,8 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
   (dolist (entry
            '((fish-mode . ("fish-lsp" "start"))
              (nim-mode . ("nimlsp"))
+             ((haskell-mode haskell-ts-mode)
+              . ("haskell-language-server-wrapper" "--lsp"))
              ;; sourcekit-lsp is the xcrun shim in /usr/bin on macOS.
              ;; SwiftPM packages work as-is; Xcode projects need a
              ;; buildServer.json from `xcode-build-server'.
@@ -670,6 +672,7 @@ but Go to Definition/Declaration for stdlib symbols returns nothing."
      :lsp ("fish-lsp")
      :format ("fish_indent"))
     (neocaml-base-mode :lsp ("ocamllsp"))
+    ((haskell-mode haskell-ts-mode) :lsp ("haskell-language-server-wrapper"))
     (nim-mode :lsp ("nimlsp"))
     (cmake-ts-mode :lsp ("neocmakelsp" "cmake-language-server"))
     (yaml-ts-mode :lsp ("yaml-language-server")))
@@ -837,6 +840,56 @@ The formatter receives no style or indentation overrides.  The
 ;; The package's autoloads send .nims/.nimble to nimscript-mode.
 (use-package nim-mode
   :mode ("\\.nim\\(?:s\\|ble\\)\\'" . nim-mode))
+
+;;;; Haskell
+
+;; The classic mode lets treesit-auto prompt before the grammar exists;
+;; once installed, treesit-auto remaps .hs buffers to haskell-ts-mode.
+;; HLS is optional; install a version matching the project's GHC.
+(use-package haskell-mode
+  :mode ("\\.hs\\'" . haskell-mode))
+
+(use-package haskell-ts-mode
+  :straight (:type git :repo "https://codeberg.org/pranshu/haskell-ts-mode.git")
+  :commands (haskell-ts-mode run-haskell)
+  :init
+  (setq haskell-ts-use-indent t)
+  ;; Newer grammars rename nodes that this mode still queries.
+  (setf (treesit-auto-recipe-revision
+         (seq-find (lambda (recipe)
+                     (eq (treesit-auto-recipe-lang recipe) 'haskell))
+                   treesit-auto-recipe-list))
+        "v0.23.1"))
+
+;;;; Prolog
+
+;; Open .pl, .pro, and .prolog files in Prolog mode.
+;; M-x run-prolog starts the SWI-Prolog REPL.
+(use-package prolog
+  :straight nil
+  :mode (("\\.pl\\'" . prolog-mode)
+         ("\\.pro\\'" . prolog-mode)
+         ("\\.prolog\\'" . prolog-mode))
+  :commands run-prolog
+  :init
+  (setq prolog-system 'swi))
+
+;;;; CLIPS
+
+(use-package clips-mode
+  :mode ("\\.clp\\'" . clips-mode)
+  ;; Match Lisp's comment default to avoid recursive indentation on Emacs 31.
+  :hook (clips-mode . (lambda ()
+                       (setq-local comment-add 1)
+                       ;; Legacy clips-mode skips standard mode hooks.
+                       (font-lock-mode 1))))
+
+;;;; Erlang
+
+(use-package erlang
+  :mode ("\\.\\(?:erl\\|hrl\\|escript\\)\\'" . erlang-mode)
+  :interpreter ("escript" . erlang-mode)
+  :commands (erlang-shell run-erlang))
 
 ;;;; Rust
 

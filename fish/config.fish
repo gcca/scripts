@@ -16,7 +16,7 @@ if status is-interactive
     end
 
     #: {{{ Theme
-    set -l theme tokyonight_night
+    set -l theme rose-pine-dawn
     if not set -q __gcca_fish_theme; or test "$__gcca_fish_theme" != "$theme"
         if fish_config theme choose $theme
             set -g __gcca_fish_theme $theme
@@ -55,7 +55,7 @@ if status is-interactive
 
     #: {{{ Bat
     if command -q bat
-        set -x BAT_THEME TwoDark
+        # set -x BAT_THEME TwoDark
         set -x BAT_STYLE 'numbers,changes,header'
         alias cat='bat'
     end
