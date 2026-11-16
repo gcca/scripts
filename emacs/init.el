@@ -863,6 +863,55 @@ The formatter receives no style or indentation overrides.  The
 
 ;;;; Prolog
 
+(defun gcca/prolog-format-buffer ()
+  "Format local Prolog source with the lsp_server pack's standalone formatter.
+Install it once with `swipl pack install lsp_server'.
+On failure, leave the buffer untouched and allow saving to continue."
+  (interactive)
+  (when (and buffer-file-name (not (file-remote-p buffer-file-name)))
+    (if-let* ((swipl (executable-find "swipl")))
+        (let ((default-directory (file-name-directory
+                                  (expand-file-name buffer-file-name)))
+              (out (generate-new-buffer " *prolog-format*"))
+              source err)
+          (unwind-protect
+              (condition-case failure
+                  (save-excursion
+                    (save-restriction
+                      (widen)
+                      ;; Keep relative imports next to their original source.
+                      (setq source (make-temp-file
+                                    (expand-file-name ".gcca-prolog-format-")
+                                    nil ".pl")
+                            err (make-temp-file "gcca-prolog-format-"))
+                      (let ((coding-system-for-write 'utf-8-unix)
+                            (coding-system-for-read 'utf-8-unix))
+                        (write-region (point-min) (point-max) source nil 'silent)
+                        (let* ((status (call-process
+                                        swipl nil (list out err) nil
+                                        "formatter" "--no-inplace" source))
+                               (diagnostic (with-temp-buffer
+                                             (insert-file-contents err)
+                                             (buffer-string))))
+                          ;; The formatter can recover from syntax errors and
+                          ;; return success after discarding invalid clauses.
+                          (if (and (eq status 0)
+                                   (not (string-match-p "^ERROR:" diagnostic)))
+                              (atomic-change-group
+                                (replace-buffer-contents out))
+                            (message "Prolog formatter failed (%s): %s"
+                                     status (string-trim diagnostic)))))))
+                (error (message "Prolog formatter failed: %s"
+                                (error-message-string failure))))
+            (kill-buffer out)
+            (when source (delete-file source))
+            (when err (delete-file err))))
+      (message "Prolog formatter unavailable: swipl is not installed"))))
+
+(defun gcca/prolog-enable-format-on-save ()
+  "Enable standalone Prolog formatting before saving the current buffer."
+  (add-hook 'before-save-hook #'gcca/prolog-format-buffer nil t))
+
 ;; Open .pl, .pro, and .prolog files in Prolog mode.
 ;; M-x run-prolog starts the SWI-Prolog REPL.
 (use-package prolog
@@ -871,6 +920,7 @@ The formatter receives no style or indentation overrides.  The
          ("\\.pro\\'" . prolog-mode)
          ("\\.prolog\\'" . prolog-mode))
   :commands run-prolog
+  :hook (prolog-mode . gcca/prolog-enable-format-on-save)
   :init
   (setq prolog-system 'swi))
 
